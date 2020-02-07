@@ -1,0 +1,207 @@
+﻿@using Forum.ViewModels.ViewModels
+@model UserViewModel
+
+@{
+    ViewData["Title"] = "Profile";
+}
+
+<br />
+<h2 class="text-center" style="font-family:Verdana; margin-left:10%">Profile page</h2>
+<br />
+<br />
+<div class="row">
+    <div class="col-sm-3">
+        <a href="#" class="nav-tabs-dropdown btn btn-block btn-primary">Menu</a>
+        <ul id="nav-tabs-wrapper" class="nav nav-tabs nav-pills nav-stacked well">
+            <li id="tab1"><a href="#vtab1" data-toggle="tab">Info</a></li>
+            <li id="tab2"><a href="#vtab2" data-toggle="tab">Edit profile</a></li>
+            <li id="tab3"><a href="#vtab3" data-toggle="tab">Private messages</a></li>
+        </ul>
+        <div class="delete-acc-btn">
+            <a class="btn-danger btn-lg" asp-action="DeleteAccountAsync" asp-controller="User" asp-route-userId="@Model.Id">Delete Account</a>
+        </div>
+    </div>
+    <div class="col-sm-9">
+        <div class="tab-content">
+            <div role="tabpanel" class="tab-pane fade in" id="vtab1">
+                <table style="margin-left:15%;">
+                    <tbody>
+                        <tr>
+                            <th style="background: none"></th>
+                            <td>
+                                <form asp-action="UploadPhotoAsync" asp-controller="User" method="post" enctype="multipart/form-data">
+                                    <img style="width:130px; height:130px;border:1px solid white" src="@Model.Avatar" />
+                                    <br />
+                                    <br />
+                                    <input type="file" name="photo" accept="image/*">
+                                    <input type="submit">
+                                </form>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th style="background:none; color:#df691a; font-size:1.9rem; text-align:right">Name:</th>
+                            <td style="font-family:Verdana; font-size:1.9rem">&nbsp;&nbsp;@Model.FullName</td>
+                        </tr>
+                        <tr>
+                            <th style="background:none; color:#df691a; font-size:1.9rem; text-align:right">Username:</th>
+                            <td style="font-family:Verdana; font-size:1.9rem">&nbsp;&nbsp;@Model.Username</td>
+                        </tr>
+                        <tr>
+                            <th style="background:none; color:#df691a; font-size:1.9rem; text-align:right">E-mail:</th>
+                            <td style="font-family:Verdana; font-size:1.9rem">&nbsp;&nbsp;@Model.Email</td>
+                        </tr>
+                        <tr>
+                            <th style="background:none; color:#df691a; font-size:1.9rem; text-align:right">Joined:</th>
+                            <td style="font-family:Verdana; font-size:1.9rem">&nbsp;&nbsp;@Model.Joined.ToShortDateString()</td>
+                        </tr>
+                        <tr>
+                            <th style="background:none; color:#df691a; font-size:1.9rem; text-align:right">Posts:</th>
+                            <td style="font-family:Verdana; font-size:1.9rem">&nbsp;&nbsp;@Model.Posts.Count()</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div role="tabpanel" class="tab-pane fade in" id="vtab2">
+                <h3 style="margin-left:33%">Edit Profile</h3>
+                <br />
+                <form id="edit-profile" class="form-group w-50 text-center" asp-action="UpdateUserAsync" asp-controller="User" method="post">
+                    <input type="hidden" name="UserID" value="@Model.Id" />
+                    <div class="form-group col-xs-5">
+                        <label for="name">First name</label>
+                        <input type="text" class="form-control" name="FirstName" id="firstName" placeholder="Your New First Name...">
+                    </div>
+                    <div class="form-group col-xs-5">
+                        <label for="oldPassword">Old Password</label>
+                        <input type="password" class="form-control" name="OldPassword" id="oldPassword" placeholder="Your old password...">
+                    </div>
+                    <div class="form-group col-xs-5">
+                        <label for="surname">Last name</label>
+                        <input type="text" class="form-control" name="LastName" id="lastName" placeholder="Your New Last Name">
+                    </div>
+                    <div class="form-group col-xs-5">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" class="form-control" name="NewPassword" id="newPassword" placeholder="Your new password...">
+                    </div>
+                    <div class="form-group col-xs-5">
+                        <label for="email">Email address</label>
+                        <input type="email" class="form-control" name="Email" id="email" aria-describedby="emailHelp" placeholder="Your New Email...">
+                    </div>
+                    <div class="form-group col-xs-5">
+                        <label for="confirmNewPassword">Confirm New Password</label>
+                        <input type="password" class="form-control" name="ConfirmNewPassword" id="confirmNewPassword" placeholder="Confirm your new password">
+                    </div>
+                    <div class="form-group col-xs-5" style="width:83%"><button type="submit" class="btn btn-primary submit-btn">Submit</button></div>
+                </form>
+            </div>
+            <div role="tabpanel" class="tab-pane fade in" id="vtab3">
+                <h3 style="margin-left:29%">Private messages</h3>
+                <br />
+                @if (Model.Messages.Count() > 0)
+                {
+                    int page = ViewBag.Page;
+                    
+                    <table style="margin-left:5%; width:70%">
+                        <tbody>
+                            <tr>
+                                <td colspan="2">
+                                    <a class="btn btn-danger btn-sm delete-btn" style="float:right; margin-bottom:0.9%" asp-controller="Message" asp-action="DeleteAllMessageAsync" asp-route-userId="@Model.Id">Delete All</a>
+                                </td>
+                            </tr>
+                            @foreach (var message in Model.Messages.Skip(page * 5).Take(5).ToList())
+                            {
+                                <tr>
+                                    <th style="padding: 3%; border-top:1px solid #808080; border-left:1px solid #808080">From:&nbsp;@message.SenderUsername</th>
+                                    <th class="text-right" style="padding: 3%; border-top:1px solid #808080; border-right:1px solid #808080">Sent on:&nbsp;@message.Created</th>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="background-color:#4e5d6c; color:white; padding: 3%; border:1px solid #808080">
+                                        @message.Content
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">
+
+                                        @{
+                                            ViewData["Message"] = message;
+                                        }
+                                        <a style="float:right; margin:1% 0 1% 1%" class="btn btn-primary btn-xs reply-btn" data-toggle="modal" data-target="@("#userId" + message.SenderID)">Reply</a>
+                                        <partial name="_ReplyToMessage" view-data="ViewData" />
+
+                                        <a style="float:right; margin:1% 0 1% 1%" class="btn btn-danger btn-xs delete-btn" asp-action="DeleteMessage" asp-controller="Message" asp-route-messageId="@message.MessageID" asp-route-totalMessages="@Model.Messages.Count()" asp-route-currentPage="@ViewBag.Page">Delete</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <h3 style="margin-left:18%">You don't have private messages.</h3>
+                }
+                <br />
+                @if (Model.Messages.Count() > 5)
+                {
+                    int totalPages = decimal.ToInt32(Math.Round(Math.Ceiling((decimal)Model.Messages.Count() / 5), 0));
+
+                    <div style="width:50%; margin-left:37%">
+                        @for (int i = 0; i < totalPages; i++)
+                        {
+                            var index = i + 1;
+
+                            if (index == ViewBag.Page + 1)
+                            {
+                                <a style="padding:0px 7px; text-decoration:underline; color:white" asp-action="ProfileAsync" asp-controller="User" asp-route-tab="#vtab3" asp-route-page="@i"><strong>@index</strong></a>
+                                continue;
+                            }
+                            <a style="padding:0px 7px" asp-action="ProfileAsync" asp-controller="User" asp-route-tab="#vtab3" asp-route-page="@i">@index</a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+<br />
+
+@section Scripts {
+    <script>
+
+        $(document).ready(function () {
+
+            var tab = '@ViewBag.Tab';
+            
+            if (tab != null) {
+
+                if (tab == "#vtab2") {
+                    $("#tab1").removeClass("active");
+                    $("#vtab1").removeClass("active");
+                    $("#tab2").addClass("active");
+                    $("#vtab2").addClass("active");
+                    $("#tab3").removeClass("active");
+                    $("#vtab3").removeClass("active");
+                }
+
+                if (tab == "#vtab3") {
+                    $("#tab1").removeClass("active");
+                    $("#vtab1").removeClass("active");
+                    $("#tab2").removeClass("active");
+                    $("#vtab2").removeClass("active");
+                    $("#tab3").addClass("active");
+                    $("#vtab3").addClass("active");
+                }
+
+                if (tab == "") {
+                    $("#tab1").addClass("active");
+                    $("#vtab1").addClass("active");
+                    $("#tab2").removeClass("active");
+                    $("#vtab2").removeClass("active");
+                    $("#tab3").removeClass("active");
+                    $("#vtab3").removeClass("active");
+                }
+
+            }
+            console.log(tab);
+        });
+
+    </script>
+}

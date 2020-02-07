@@ -1,0 +1,67 @@
+﻿@using Forum.ViewModels.ViewModels
+@model IEnumerable<UserViewModel>
+
+@{
+    ViewData["Title"] = "Members";
+}
+
+<h3 style="text-align:center">Members</h3>
+<br />
+<table class="table-striped members">
+    <thead>
+        <tr>
+            <th style="width:54%; padding:1%">Full name</th>
+            <th class="text-center" style="width:23%">Username</th>
+            <th class="text-center" style="width:23%">Joined</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (UserViewModel user in @Model)
+        {
+            @if (user.Username != User.Identity.Name)
+            {
+                <tr>
+                    <td style="padding:1%">
+
+                        @user.FullName
+
+                        <a class="btn btn-danger btn-xs delete-btn" style="float:right" asp-action="DeleteUserAsync" asp-controller="User" asp-route-userId="@user.Id" asp-route-totalUsers="@ViewBag.TotalUsers" asp-route-currentPage="@ViewBag.Page">Delete</a>
+
+                        @if (user.Suspended == false)
+                        {
+                            <a class="btn btn-primary btn-xs suspend-btn" style="float:right; margin-right:0.5%" asp-action="SuspendUnsuspendAsync" asp-controller="User" asp-route-username="@user.Username" asp-route-page="@ViewBag.Page">Suspend</a>
+                        }
+                        else
+                        {
+                            <a class="btn btn-warning btn-xs suspend-btn" style="float:right; margin-right:0.5%" asp-action="SuspendUnsuspendAsync" asp-controller="User" asp-route-username="@user.Username" asp-route-page="@ViewBag.Page">Unsuspend</a>
+                        }
+                    </td>
+                    <td class="text-center">
+                        @user.Username
+                    </td>
+                    <td class="text-center">
+                        @user.Joined
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+<br />
+@if (ViewBag.TotalUsers > 5)
+{
+    <div class="text-center">
+        @for (int i = 0; i < ViewBag.TotalPages; i++)
+        {
+            var index = i + 1;
+
+            if (index == ViewBag.Page + 1)
+            {
+                <a style="padding:0px 7px; text-decoration:underline; color:white" asp-action="MembersAsync" asp-controller="User" asp-route-page="@i"><strong>@index</strong></a>
+                continue;
+            }
+            <a style="padding:0px 7px" asp-action="MembersAsync" asp-controller="User" asp-route-page="@i">@index</a>
+        }
+    </div>
+}
+<br />

@@ -1,0 +1,30 @@
+﻿@using Forum.ViewModels.ViewModels
+
+@{
+    ThreadViewModel thread = (ThreadViewModel)ViewData["Thread"];
+}
+
+<div id="@("thread" + thread.ThreadID)" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title text-center">Edit Thread</h4>
+            </div>
+            <div class="modal-body">
+                <form asp-action="EditThreadAsync" asp-controller="Thread" asp-route-categoryId="@thread.CategoryID" asp-route-page="@ViewBag.Page" method="post">
+                    <input type="hidden" name="ThreadId" value="@thread.ThreadID" />
+                    <input type="hidden" name="DateCreated" value="@thread.DateCreated" />
+                    <input type="hidden" name="CategoryID" value="@thread.CategoryID" />
+                    <div class="form-group">
+                        <textarea name="Title" class="form-control" id="title" style="border-radius:7px" rows="3">@thread.Title</textarea>
+                    </div>
+                    <div class="form-group text-center">
+                        <button class="btn btn-info save-btn" style="margin-right:10px">Save</button>
+                        <button type="button" class="btn btn-danger close-btn" data-dismiss="modal" style="margin-left:10px">Close</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

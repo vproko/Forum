@@ -1,0 +1,28 @@
+﻿@using Forum.ViewModels.ViewModels
+
+@{
+    CategoryViewModel category = (CategoryViewModel)ViewData["Category"];
+}
+
+<div id="@("categoryId" + category.CategoryID)" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title text-center">Edit Category</h4>
+            </div>
+            <div class="modal-body">
+                <form asp-action="EditCategoryAsync" asp-controller="Category" method="post">
+                    <input type="hidden" name="CategoryID" value="@category.CategoryID" />
+                    <div class="form-group">
+                        <textarea name="title" class="form-control" id="@(category.Title.ToLower())" style="border-radius:7px" rows="3">@category.Title</textarea>
+                    </div>
+                    <div class="form-group text-center">
+                        <button class="btn btn-info save-btn" style="margin-right:10px">Save</button>
+                        <button type="button" class="btn btn-danger close-btn" data-dismiss="modal" style="margin-left:10px">Close</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
