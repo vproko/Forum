@@ -4,6 +4,14 @@
 
 It's a web forum with two groups of users, admins and users. The forum it's organized in categories on different topics, each category has threads, and each thread has posts.The users can create/edit threads and posts, reply to posts, if the post has unappropriate content it can be reported, they can send private messages to each other as well. Only the administrators can create/edit/delete categories, they can aslo edit/delete posts, when someone is reported they can suspend/delete user's account.
 
+Admin's account:
+Username: "James"
+Password: "Admin123#"
+
+User's account:
+Username: "jdoe"
+Password: "John123#"
+
 ### Instructions:
 
 1) Open the solution "Forum.sln" in Visual Studio,
