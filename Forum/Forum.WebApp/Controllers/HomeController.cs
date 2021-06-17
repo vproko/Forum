@@ -1,40 +1,29 @@
-﻿using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using Forum.WebApp.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using Forum.Services.Interfaces;
+using AutoMapper;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Forum.Dto.Models;
+using Forum.ViewModels.ViewModels;
 
 namespace Forum.WebApp.Controllers
 {
     public class HomeController : Controller
     {
+        private readonly ICategoryService _categoryService;
+        private readonly IMapper _mapper;
 
-        public IActionResult Index()
+        public HomeController(ICategoryService categoryService, IMapper mapper)
         {
-            return View();
+            _categoryService = categoryService;
+            _mapper = mapper;
         }
 
-        public IActionResult About()
+        public async Task<IActionResult> Index()
         {
-            ViewData["Message"] = "Your application description page.";
-
-            return View();
-        }
-
-        public IActionResult Contact()
-        {
-            ViewData["Message"] = "Your contact page.";
-
-            return View();
-        }
-
-        public IActionResult Privacy()
-        {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            IEnumerable<CategoryDto> data = await _categoryService.GetAllCategoriesAsync(1, 5);
+            IEnumerable<CategoryViewModel> categories = _mapper.Map<IEnumerable<CategoryViewModel>>(data);
+            return View(categories);
         }
     }
 }

@@ -1,146 +1,115 @@
 ﻿<!DOCTYPE html>
-
-@{
-    bool isItAdmin = User.IsInRole("admin");
-}
-
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="~/avatars/ForumIcon.png" sizes="any" type="image/png">
-    <title>@ViewData["Title"] - Forum.WebApp</title>
-
-    <environment include="Development">
-        <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap-superhero.css" />
-        <link rel="stylesheet" href="~/css/site.css" />
-    </environment>
-    <environment exclude="Development">
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
-              asp-fallback-href="~/lib/bootstrap/dist/css/bootstrap.min.css"
-              asp-fallback-test-class="sr-only" asp-fallback-test-property="position" asp-fallback-test-value="absolute" />
-        <link rel="stylesheet" href="~/css/site.min.css" asp-append-version="true" />
-    </environment>
+    <title>@ViewData["Title"] - Forum</title>
+    <link rel="icon" href="~/uploads/ForumIcon.png" sizes="any" type="image/png">
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
 </head>
 <body>
-    <nav class="navbar navbar-inverse navbar-fixed-top">
-        <div class="container">
-            <div class="navbar-header">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <a asp-area="" asp-controller="Category" asp-action="ShowAllCategoriesAsync" class="navbar-brand">Forum</a>
-            </div>
-            <div class="navbar-collapse collapse">
-                <ul class="nav navbar-nav">
-                    @if (isItAdmin)
-                    {
-                        <li>
-                            <div class="dropdown">
-                                <button style="background:#df691a; color:white" class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    Create category
-                                </button>
-                                <div style="background:#2b3e50" class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                                    <form style="background: #2b3e50" class="form-inline" asp-controller="Category" asp-action="CreateCategoryAsync" method="post">
-                                        <input style="background-color:#df691a; color:white; border:1px solid white" class="form-control" name="title" type="search" placeholder="New Category" aria-label="Search">
-                                        <button class="btn btn-primary btn-sm post-btn" type="submit">Create</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <a asp-area="" asp-controller="User" asp-action="MembersAsync">Members</a>
-                        </li>
-                        <li>
-                            <a asp-controller="User" asp-action="RegisterAdmin">Create Admin</a>
-                        </li>
-                        <li>
-                            <a asp-action="ReportedPostsAsync" asp-controller="Post">
-                                Reports&nbsp;<span style="color:greenyellow">
-                                    <b>
-                                        @await Component.InvokeAsync("Reports")
-                                    </b>
-                                </span>
-                            </a>
-                        </li>
-                    }
-                    <li><a asp-area="" asp-controller="Post" asp-action="RecentPostsAsync">Recent posts</a></li>
-                </ul>
-                <ul class="nav navbar-nav navbar-right">
-                    <li>
-                        <form class="form-inline" asp-controller="Post" asp-action="SearchAsync" method="post">
-                            <input style="background-color:#df691a; color:white; border:1px solid white" class="form-control" name="search" type="search" placeholder="Search" aria-label="Search">
-                            <button class="btn btn-primary" type="submit">Search</button>
-                        </form>
-                    </li>
-                    <li>
-                        @if (!User.Identity.IsAuthenticated)
-                        {
-                            <a asp-area="" asp-controller="User" asp-action="Registration">Register</a>
-                        }
-                    </li>
-                    <li>
-                        @if (User.Identity.IsAuthenticated)
-                        {
-                            <a asp-area="" asp-controller="User" asp-action="ProfileAsync">
-                                Hi @User.Identity.Name&nbsp;<span style="color:greenyellow">
-                                    <b>
-                                        @await Component.InvokeAsync("MessagesCount")
-                                    </b>
-                                </span>
-                            </a>
-
-                        }
-                    </li>
-                    <li>
-                        @if (User.Identity.IsAuthenticated)
-                        {
-                            <a asp-area="" asp-controller="User" asp-action="LogOutAsync">Log Out</a>
-                        }
-                        else
-                        {
-                            <a asp-area="" asp-controller="User" asp-action="LogIn">Log In</a>
-                        }
-                    </li>
-                </ul>
-            </div>
+    <header>
+        <div class="fixed-top">
+            <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom shadow-sm mb-4 " id="main-bar">
+                <div class="container-fluid" id="navigation">
+                    <a class="navbar-brand m-sm-0" asp-area="" asp-controller="Category" asp-action="ViewCategories">Forum</a>
+                    <form class="form-inline my-1 my-lg-0" asp-action="SearchPosts" asp-controller="Post" method="post">
+                        <input id="search-input" type="search" placeholder="Search" aria-label="Search" class="form-control mr-sm-2 shadow-none" style="border:1px solid coral;" name="term">
+                        <button id="search-btn" type="submit" class="btn register-btn submit">Search</button>
+                    </form>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                            aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="navbar-collapse collapse d-sm-inline-flex flex-sm-row-reverse">
+                        <div class="container-fluid" style="background-color:white;">
+                            <ul class="navbar-nav flex-grow-1 justify-content-end">
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-area="" asp-controller="Post" asp-action="RecentPosts">Recent</a>
+                                </li>
+                                @{
+                                    if (User.Identity.IsAuthenticated is false)
+                                    {
+                                        <li class="nav-item">
+                                            <a class="nav-link" asp-area="" asp-controller="User" asp-action="Registration">Sign up</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" id="login-link" asp-area="" asp-controller="User" asp-action="Login">Login</a>
+                                        </li>
+                                    }
+                                }
+                                @{
+                                    if (User.Identity.IsAuthenticated is true)
+                                    {
+                                        if (User.IsInRole("admin") is true)
+                                        {
+                                            <li class="nav-item">
+                                                <a class="nav-link" asp-area="" asp-controller="User" asp-action="UsersList">Users</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="fa-stack pt-1 mx-1" id="complains" asp-area="" asp-controller="Post" asp-action="ReportedPosts">
+                                                    <span class="fas fa-exclamation-triangle  fa-stack-2x position-relative"></span>
+                                                    <strong class=" fa-stack-1x position-absolute">
+                                                        @await Component.InvokeAsync("ReportsCount")
+                                                    </strong>
+                                                </a>
+                                            </li>
+                                        }
+                                        <li class="nav-item">
+                                            <a class="fa-stack pt-1 mx-1" id="messages" asp-area="" asp-controller="Message" asp-action="ViewMessages">
+                                                <span class="far fa-comment fa-stack-2x position-relative"></span>
+                                                <strong class="fa-stack-1x position-absolute">
+                                                    @await Component.InvokeAsync("MessageCount")
+                                                </strong>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" id="logout-link" asp-area="" asp-controller="User" asp-action="Logout">Logout</a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
         </div>
-    </nav>
-
-    <div class="container body-content">
-
-        @RenderBody()
-
-        <footer>
-            <p>&copy; 2019 - Forum</p>
-        </footer>
+    </header>
+    <div class="p-0" id="main-view">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+        @if (User.Identity.IsAuthenticated is true)
+        {
+            <partial name="~/Views/User/_UserProfileModal.cshtml" />
+        }
     </div>
 
-    <environment include="Development">
-        <script src="~/lib/jquery/dist/jquery.js"></script>
-        <script src="~/lib/bootstrap/dist/js/bootstrap.js"></script>
-        <script src="~/js/site.js" asp-append-version="true"></script>
-    </environment>
-    <environment exclude="Development">
-        <script src="https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.3.1.min.js"
-                asp-fallback-src="~/lib/jquery/dist/jquery.min.js"
-                asp-fallback-test="window.jQuery"
-                crossorigin="anonymous"
-                integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT">
-        </script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"
-                asp-fallback-src="~/lib/bootstrap/dist/js/bootstrap.min.js"
-                asp-fallback-test="window.jQuery && window.jQuery.fn && window.jQuery.fn.modal"
-                crossorigin="anonymous"
-                integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd">
-        </script>
-        <script src="~/js/site.min.js" asp-append-version="true"></script>
-    </environment>
-
+    <footer class="footer position-fixed text-muted text-center w-100">
+        <div class="row">
+            <div class="col-4 text-left footer-content">
+                <span class="pl-3">@DateTime.UtcNow.ToLocalTime().Date.ToString("dd MMMM, yyyy")</span>
+            </div>
+            <div class="col-4 text-center footer-content">
+                <b id="footer-year">&copy; 2021 - </b>
+                <a id="footer-forum" asp-area="" asp-controller="Category" asp-action="ViewCategories">Forum</a>
+            </div>
+            <div class="col-4 text-right footer-content">
+                @if (User.Identity.IsAuthenticated is true)
+                {
+                    <span style="color:cadetblue;font-size:15px;font-weight:900">Hi</span>
+                    <span class="pr-3" style="color:coral;font-size:15px;font-weight:900;">
+                        <a id="user-profile" class="text-decoration-none" data-userId="@await Component.InvokeAsync("UserId")">@User.Identity.Name</a><span style="color:cadetblue;">!</span>
+                    </span>
+                }
+            </div>
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @RenderSection("Scripts", required: false)
-
 </body>
 </html>

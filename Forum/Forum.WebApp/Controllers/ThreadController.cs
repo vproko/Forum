@@ -1,86 +1,136 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using AutoMapper;
+using Forum.Dto.Models;
 using Forum.Services.Interfaces;
 using Forum.ViewModels.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Forum.WebApp.Controllers
 {
-    [Authorize]
+    [Route("[controller]/[action]")]
     public class ThreadController : Controller
     {
         private readonly IThreadService _threadService;
-        private readonly ICategoryService _categoryService;
         private readonly IUserService _userService;
+        private readonly IMapper _mapper;
 
-        public ThreadController(IThreadService threadService, ICategoryService categoryService, IUserService userService)
+        public ThreadController(IThreadService threadService, IUserService userService, IMapper mapper)
         {
             _threadService = threadService;
-            _categoryService = categoryService;
             _userService = userService;
+            _mapper = mapper;
         }
 
         [AllowAnonymous]
-        public async Task<IActionResult> ShowAllThreadsAsync(string categoryId, int page = 0)
+        [HttpGet]
+        public async Task<IActionResult> ViewThreadAsync(Guid threadId, int pageIndex = 1, int pageSize = 5)
         {
-            CategoryViewModel category = await _categoryService.GetCategoryByIdAsync(categoryId);
-            IEnumerable<ThreadViewModel> sorted = await PagesInfoAuthCheckSortPostsAsync(category.Threads, page);
-            ViewBag.Category = category;
-
-            return View(sorted);
+            ViewData["PageIndex"] = pageIndex;
+            ViewData["PageSize"] = pageSize;
+            if (threadId != Guid.Empty)
+            {
+                if (User.Identity.IsAuthenticated == true)
+                    ViewData["User"] = _mapper.Map<UserViewModel>(await _userService.FindUserAsync(User.Identity.Name));
+                return View(_mapper.Map<ThreadViewModel>(await _threadService.FindThreadWithRelatedDataAsync(threadId, pageIndex, pageSize)));
+            }
+            return RedirectToAction("Index", "Home");
         }
 
-        public async Task<IActionResult> AddThreadAsync(ThreadViewModel thread)
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateThreadAsync(ThreadViewModel thread, Guid categoryId, int pageIndex, int pageSize)
         {
-            if(ModelState.IsValid)
-                await _threadService.CreateThreadAsync(thread);
-
-            return RedirectToAction("ShowAllThreadsAsync",new { categoryId = thread.CategoryID });
+            if (ModelState.IsValid && categoryId != Guid.Empty)
+                await _threadService.CreateAsync(thread);
+            return RedirectToAction("ViewCategory", "Category", new { categoryId, pageIndex, pageSize });
         }
 
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> EditThreadAsync(ThreadViewModel thread, string categoryId, int page)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateThreadAsync(ThreadViewModel thread, int pageIndex)
         {
-            await _threadService.UpdateThreadAsync(thread);
-
-            return RedirectToAction("ShowAllThreadsAsync", new { categoryId, page });
+            if (ModelState.IsValid)
+                await _threadService.UpdateAsync(_mapper.Map<ThreadDto>(thread));
+            return RedirectToAction("ViewCategory", "Category", new { categoryId = thread.CategoryId, pageIndex });
         }
 
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> RemoveThreadAsync(string threadId, string categoryId, int currentPage)
+        [HttpGet]
+        public async Task<IActionResult> DeleteThreadAsync(Guid threadId, Guid categoryId, int pageIndex, int pageSize)
         {
-            await _threadService.DeleteThreadAsync(threadId);
-            CategoryViewModel category = await _categoryService.GetCategoryByIdAsync(categoryId);
-            int totalPages = decimal.ToInt32(Math.Round(Math.Ceiling(((decimal)category.Threads.Count()) / 5), 0)) - 1;
-            int page = totalPages <= currentPage ? totalPages : currentPage;
-
-            return RedirectToAction("ShowAllThreadsAsync", new { categoryId, page });
-        }
-        
-        #region PrivateMethods
-        private async Task<IEnumerable<ThreadViewModel>> PagesInfoAuthCheckSortPostsAsync(IEnumerable<ThreadViewModel> threads, int page)
-        {
-            await IsItAuthenticatedSuspendedAsync();
-            PaginationInfo(threads, page);
-
-            return threads.Skip(page * 5).Take(5);
+            if (threadId != Guid.Empty && categoryId != Guid.Empty)
+                await _threadService.RemoveAsync(threadId);
+            return RedirectToAction("ViewCategory", "Category", new { categoryId, pageIndex, pageSize });
         }
 
-        private async Task IsItAuthenticatedSuspendedAsync()
+        [Authorize(Roles = "admin")]
+        [HttpGet]
+        public async Task<IActionResult> MakeThreadStickyAsync(Guid threadId, Guid categoryId, int pageIndex)
         {
-            if (HttpContext.User.Identity.IsAuthenticated)
-                ViewBag.CurrentUser = await _userService.GetCurrentUserAsync(User.Identity.Name);
+            if (threadId != Guid.Empty && categoryId != Guid.Empty)
+                await _threadService.StickThreadAsync(threadId);
+            return RedirectToAction("ViewCategory", "Category", new { categoryId, pageIndex });
         }
 
-        private void PaginationInfo(IEnumerable<ThreadViewModel> threads, int page)
+        [Authorize(Roles = "admin")]
+        [HttpGet]
+        public async Task<IActionResult> MakeThreadNonStickyAsync(Guid threadId, Guid categoryId, int pageIndex)
         {
-            ViewBag.Page = page;
-            ViewBag.TotalThreads = threads.Count();
-            ViewBag.TotalPages = decimal.ToInt32(Math.Round(Math.Ceiling((decimal)threads.Count() / 5), 0));
+            if (threadId != Guid.Empty && categoryId != Guid.Empty)
+                await _threadService.UnStickThreadAsync(threadId);
+            return RedirectToAction("ViewCategory", "Category", new { categoryId, pageIndex });
         }
-        #endregion
+
+        [Authorize(Roles = "admin")]
+        [HttpGet]
+        public async Task<IActionResult> SetThreadLockedAsync(Guid threadId, Guid categoryId, int pageIndex)
+        {
+            if (threadId != Guid.Empty && categoryId != Guid.Empty)
+                await _threadService.LockThreadAsync(threadId);
+            return RedirectToAction("ViewCategory", "Category", new { categoryId, pageIndex });
+        }
+
+        [Authorize(Roles = "admin")]
+        [HttpGet]
+        public async Task<IActionResult> SetThreadUnlockedAsync(Guid threadId, Guid categoryId, int pageIndex)
+        {
+            if (threadId != Guid.Empty && categoryId != Guid.Empty)
+                await _threadService.UnlockThreadAsync(threadId);
+            return RedirectToAction("ViewCategory", "Category", new { categoryId, pageIndex });
+        }
+
+        [Authorize(Roles = "admin")]
+        [HttpPost]
+        public async Task<IActionResult> ChangeCategoryAsync(Guid threadId, Guid categoryId)
+        {
+            if (threadId != Guid.Empty && categoryId != Guid.Empty)
+            {
+                await _threadService.MoveThreadAsync(threadId, categoryId);
+                return Json(new { message = "Thread was successfully moved." });
+            }
+            return Json(new { message = "Something went wrong, thread wasn't move in the new category" });
+        }
+
+        [Authorize(Roles = "admin")]
+        [HttpPost]
+        public async Task<IActionResult> SearchThreadsAsync(string term)
+        {
+            if (string.IsNullOrEmpty(term) is false)
+            {
+                var data = await _threadService.GetThreadsBySearchAsync(term);
+                if (data.Count() != 0)
+                {
+                    return Json(_mapper.Map<IEnumerable<ThreadViewModel>>(data));
+                }
+                return Json(new { error = "Sorry there's no match" });
+            }
+            return Json(new { error = "Sorry there's no match" });
+        }
     }
 }

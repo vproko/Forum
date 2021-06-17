@@ -1,58 +1,52 @@
 ﻿using Forum.DataAccess.Interfaces;
 using Forum.DomainClasses.Models;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Forum.DataAccess.Repositories
 {
-    public class MessageRepository : BaseRepository, IRepository<Message>
+    public class MessageRepository : Repository<Message>, IMessageRepository
     {
         public MessageRepository(ForumDbContext context) : base(context) { }
-
-        public IEnumerable<Message> GetAll() => _context.Messages;
-
-        public Message GetById(string id)
+              
+        public async Task<IEnumerable<Message>> GetMessagesAsync(Guid userId, int pageIndex, int pageSize)
         {
-            return _context.Messages.FirstOrDefault(m => m.MessageID == id);
+            return await _context.Messages
+                .Where(m => m.ReceiverId == userId)
+                .Select(m => new Message
+                {
+                    MessageId = m.MessageId,
+                    ReceiverId = m.ReceiverId,
+                    SenderId = m.SenderId,
+                    SenderUsername = m.SenderUsername,
+                    Content = m.Content,
+                    DateSent = m.DateSent,
+                    User = new User
+                    {
+                        Id = m.User.Id,
+                        UserName = m.User.UserName,
+                        Joined = m.User.Joined,
+                        PostsCount = m.User.Posts.Count(),
+                        RepliesCount = m.User.Replies.Count(),
+                        Avatar = m.User.Avatar
+                    }
+                })
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .OrderByDescending(m => m.DateSent)
+                .ToListAsync();
         }
-
-        public int Insert(Message entity)
+        
+        public async Task<int> GetMessagesCountAsync (Guid userId)
         {
-            _context.Messages.Add(entity);
-            return _context.SaveChanges();
-        }
-
-        public int Update(Message entity)
-        {
-            Message privateMessage = _context.Messages.FirstOrDefault(pm => pm.MessageID == entity.MessageID);
-
-            if (privateMessage != null)
-            {
-                privateMessage.MessageID = entity.MessageID;
-                privateMessage.ReceiverID = entity.ReceiverID;
-                privateMessage.ReceiverUsername = entity.ReceiverUsername;
-                privateMessage.SenderID = entity.SenderID;
-                privateMessage.SenderUsername = entity.SenderUsername;
-                privateMessage.Content = entity.Content;
-                privateMessage.Created = entity.Created;
-
-                return _context.SaveChanges();
-            }
-
-            return -1;
-        }
-
-        public int Delete(string id)
-        {
-            Message privateMessage = _context.Messages.FirstOrDefault(pm => pm.MessageID == id);
-
-            if (privateMessage != null)
-            {
-                _context.Remove(privateMessage);
-                return _context.SaveChanges();
-            }
-
-            return -1;
+            return await _context.Messages
+                .AsNoTracking()
+                .Where(m => m.User.Id == userId)
+                .Select(m => m.MessageId)
+                .CountAsync();
         }
     }
 }

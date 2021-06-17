@@ -1,179 +1,210 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using AutoMapper;
+using Forum.Dto.Models;
 using Forum.Services.Interfaces;
 using Forum.ViewModels.ViewModels;
+using Forum.WebApp.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Forum.WebApp.Controllers
 {
-    [Authorize]
+    [Route("[controller]/[action]")]
     public class PostController : Controller
     {
         private readonly IPostService _postService;
-        private readonly IThreadService _threadService;
         private readonly IUserService _userService;
+        private readonly IMapper _mapper;
 
-        public PostController(IPostService postService, IThreadService threadService, IUserService userService)
+        public PostController(IPostService postService, IUserService userService, IMapper mapper)
         {
             _postService = postService;
-            _threadService = threadService;
             _userService = userService;
+            _mapper = mapper;
         }
 
-        [AllowAnonymous]
-        public async Task<IActionResult> ShowPostsAsync(string threadId, int page = 0)
-        {
-            ThreadViewModel thread = await _threadService.GetThreadByIdAsync(threadId);
-            IEnumerable<PostViewModel> sorted = await PagesInfoAuthCheckSortPostsAsync(thread.Posts, page);
-            ViewBag.Thread = thread;
-
-            return View(sorted);
-        }
-
-        [AllowAnonymous]
-        public async Task<IActionResult> RecentPostsAsync(int page = 0)
-        {
-            IEnumerable<PostViewModel> posts = await _postService.GetAllRecentPostsAsync();
-            ViewBag.View = "RecentPostsAsync";
-
-            return View(await PagesInfoAuthCheckSortPostsAsync(posts, page));
-        }
-
-        [AllowAnonymous]
-        public async Task<IActionResult> SearchAsync(string search, int page = 0)
-        {
-            if (search != null)
-            {
-                IEnumerable<PostViewModel> result = await _postService.SearchPostsAsync(search);
-                ViewBag.SearchTerm = search;
-
-                return View(await PagesInfoAuthCheckSortPostsAsync(result, page));
-            }
-
-            return RedirectToAction("ShowAllCategoriesAsync", "Category");
-        }
-
+        [Authorize]
         [HttpPost]
-        public async Task<IActionResult> AddPostAsync(PostViewModel post, int totalCount)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreatePostAsync(int pageIndex, PostViewModel post)
         {
             if (ModelState.IsValid)
-                await _postService.CreatePostAsync(post);
-
-            int lastPage = decimal.ToInt32(Math.Round(Math.Ceiling(((decimal)totalCount + 1) / 5), 0)) - 1;
-
-            return RedirectToAction("ShowPostsAsync", new { threadId = post.ThreadID, page = lastPage });
+                await _postService.CreateAsync(_mapper.Map<PostDto>(post), User.Identity.Name);
+            return RedirectToAction("ViewThread", "Thread", new { threadId = post.ThreadId, pageIndex });
         }
 
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> FindUsersPostsAsync(Guid userId, string username, CancellationToken ct, int pageIndex = 1, int pageSize = 5)
+        {
+            if (userId != Guid.Empty)
+            {
+                ViewData["UserID"] = userId;
+                ViewData["Username"] = username;
+                PageInfoViewData(pageIndex, pageSize);
+                if (User.Identity.IsAuthenticated is true)
+                    ViewData["User"] = _mapper.Map<UserViewModel>(await _userService.FindUserAsync(User.Identity.Name));
+                return View(_mapper.Map<IEnumerable<PostViewModel>>(await _postService.GetPostsByUsersIdAsync(userId, pageIndex, pageSize, ct)));
+            }
+            return View();
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> RecentPostsAsync(CancellationToken ct, int pageIndex = 1, int pageSize = 5)
+        {
+            PageInfoViewData(pageIndex, pageSize);
+            if (User.Identity.IsAuthenticated == true)
+                ViewData["User"] = _mapper.Map<UserViewModel>(await _userService.FindUserAsync(User.Identity.Name));
+            return View(_mapper.Map<IEnumerable<PostViewModel>>(await _postService.GetRecentPostsPerPageAsync(pageIndex, pageSize, ct)));
+        }
+
+        [Authorize]
         [HttpPost]
-        public async Task<IActionResult> EditPostAsync(PostViewModel post, string view, string search, int page)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditPostAsync(PostViewModel post, Guid threadId, Guid userId, string username, string term, int pageIndex, int pageSize)
         {
-            await _postService.ChangePostAsync(post);
-
-            return ToWhichViewToReturn(post.ThreadID, view, search, page);
+            if (ModelState.IsValid)
+            {
+                await _postService.UpdateAsync(_mapper.Map<PostDto>(post), User.Identity.Name);
+                return ToWhichPageToReturn(threadId, userId, username, term, pageIndex, pageSize);
+            }
+            return RedirectToAction("ViewCategories", "Category");
         }
 
+        [Authorize(Roles = "admin")]
         [HttpPost]
-        public async Task<IActionResult> CreateReplyAsync(string originalPoster, string originalPost, PostViewModel reply)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditPostAdminAsync(PostViewModel post, int postIdx, int replyIdx, int postPgSize, int replyPgSize)
         {
-            await _postService.CreatePostReplyAsync(originalPoster, originalPost, reply);
-            IEnumerable<PostViewModel> totalPosts = await _postService.GetPostsByThreadAsync(reply.ThreadID);
-            int lastPage = decimal.ToInt32(Math.Round(Math.Ceiling((decimal)totalPosts.Count() / 5), 0)) - 1;
-
-            return RedirectToAction("ShowPostsAsync", new { threadId = reply.ThreadID, page = lastPage });
+            if (ModelState.IsValid)
+                await _postService.UpdateAsync(_mapper.Map<PostDto>(post), User.Identity.Name);
+            return RedirectToAction("ReportedPosts", new { postIdx, replyIdx, postPgSize, replyPgSize });
         }
 
-        public async Task<IActionResult> ReportPostAsync(string postId, string threadId, string view, string search, int page)
+        [Authorize]
+        public async Task<IActionResult> ReportPostAsync(Guid postId, Guid threadId, Guid userId, string username, string term, int pageIndex, int pageSize)
         {
-            await _postService.ReportUnreportPostAsync(postId);
-
-            return ToWhichViewToReturn(threadId, view, search, page);
+            if (postId != Guid.Empty)
+            {
+                await _postService.ReportAsync(postId);
+                return ToWhichPageToReturn(threadId, userId, username, term, pageIndex, pageSize);
+            }
+            return RedirectToAction("ViewCategories", "Category");
         }
 
-        public async Task<IActionResult> ClearAllReportsAsync(string userId)
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> UnReportPostAsync(Guid postId, int postIdx, int replyIdx, int postPgSize, int replyPgSize)
         {
-            await _postService.UnreportAllPostsByUserIdAsync(userId);
-
-            return RedirectToAction("ReportedPostsAsync");
+            if (postId != Guid.Empty)
+                await _postService.UnReportAsync(postId);
+            return RedirectToAction("ReportedPosts", new { postIdx, replyIdx, postPgSize, replyPgSize });
         }
 
-        public async Task<IActionResult> UnreportPostAsync(string postId)
+        [Authorize]
+        public async Task<IActionResult> DeletePostAsync(Guid postId, Guid threadId, Guid userId, string username, string term, int pageIndex, int pageSize)
         {
-            await _postService.ReportUnreportPostAsync(postId);
-
-            return RedirectToAction("ReportedPostsAsync");
+            if (postId != Guid.Empty)
+            {
+                await _postService.RemoveAsync(postId);
+                return ToWhichPageToReturn(threadId, userId, username, term, pageIndex, pageSize);
+            }
+            return RedirectToAction("ViewCategories", "Category");
         }
 
-        public async Task<IActionResult> ReportedPostsAsync()
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeletePostAdminAsync(Guid postId, int postIdx, int replyIdx, int postPgSize, int replyPgSize)
         {
-            IEnumerable<PostViewModel> reported = await _postService.GetAllReportedPostsAsync();
-
-            if(reported.Count() > 0) return View(reported);
-
-            return View("NoReports");
+            if (postId != Guid.Empty)
+                await _postService.RemoveAsync(postId);
+            return RedirectToAction("ReportedPosts", new { postIdx, replyIdx, postPgSize, replyPgSize });
         }
 
-        public async Task<IActionResult> DeletePostAsync(string postId, string threadId, string view, string search, int currentPage)
+        [Authorize(Roles = "admin")]
+        [HttpGet]
+        public async Task<IActionResult> ReportedPostsAsync(CancellationToken ct, int postIdx = 1, int replyIdx = 1, int postPgSize = 5, int replyPgSize = 5)
         {
-            await _postService.DeletePostAsync(postId);
-            int totalPostsCount = await TotalPostsCountAsync(threadId, view, search);
-            int totalPages = decimal.ToInt32(Math.Round(Math.Ceiling(((decimal)totalPostsCount) / 5), 0)) - 1;
-            int page = totalPages <= currentPage ? totalPages : currentPage;
-
-            return ToWhichViewToReturn(threadId, view, search, page);
+            ReportsViewModel reports = new ReportsViewModel
+            {
+                ReportedPosts = _mapper.Map<IEnumerable<PostViewModel>>(await _postService.GetReportedPostsPerPageAsync(postIdx, postPgSize, ct)),
+                ReportedReplies = Enumerable.Empty<ReplyViewModel>()
+            };
+            ViewData["PageInfo"] = new ReportsPageInfoModel()
+            {
+                Admin = _mapper.Map<UserViewModel>(await _userService.FindUserAsync(User.Identity.Name)),
+                PostIdx = postIdx,
+                ReplyIdx = replyIdx,
+                PostPgSize = postPgSize,
+                ReplyPgSize = replyPgSize,
+                WhichTab = "posts"
+            };
+            return View(reports);
         }
 
-        #region PrivateMethods
-        private async Task<IEnumerable<PostViewModel>> PagesInfoAuthCheckSortPostsAsync(IEnumerable<PostViewModel> posts, int page)
+        [Authorize(Roles = "admin")]
+        [HttpPost]
+        public async Task<IActionResult> ChangePostsThreadAsync(Guid postId, Guid threadId)
         {
-            PaginationInfo(posts, page);
-            await IsItAuthenticatedAsync();
-
-            return posts.Skip(page * 5).Take(5);
+            if (postId != Guid.Empty && threadId != Guid.Empty)
+            {
+                await _postService.MovePostAsync(postId, threadId);
+                return Json(new { response = "The post was successfully moved" });
+            }
+            return Json(new { response = "The post wasn't moved" });
         }
 
-        private async Task IsItAuthenticatedAsync()
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SearchPostsAsync(string term, CancellationToken ct, int pageIndex = 1, int pageSize = 5)
         {
-            if (HttpContext.User.Identity.IsAuthenticated)
-                ViewBag.CurrentUser = await _userService.GetCurrentUserAsync(User.Identity.Name);
+            if (string.IsNullOrEmpty(term) is false)
+            {
+                await SearchViewDataAsync(term, pageIndex, pageSize);
+                return View(_mapper.Map<IEnumerable<PostViewModel>>(await _postService.FindPostsAsync(term, pageIndex, pageSize, ct)));
+            }
+            return RedirectToAction("ViewCategories", "Category");
         }
 
-        private IActionResult ToWhichViewToReturn(string threadId, string view, string search, int page)
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> RedirectToSearchPostsAsync(string term, int pageIndex, int pageSize, CancellationToken ct)
         {
-            if (view == "ReportedPostsAsync" && User.IsInRole("admin"))
-                return RedirectToAction("ReportedPostsAsync");
-
-            if (threadId != null && view != "RecentPostsAsync" && search == null)
-                return RedirectToAction("ShowPostsAsync", new { threadId, page });
-
-            if(search != null)
-                return RedirectToAction("SearchAsync", new { search, page });
-
-            return RedirectToAction("RecentPostsAsync", new { page });
+            if (string.IsNullOrEmpty(term) is false)
+            {
+                await SearchViewDataAsync(term, pageIndex, pageSize);
+                return View("Views/Post/SearchPosts.cshtml", _mapper.Map<IEnumerable<PostViewModel>>(await _postService.FindPostsAsync(term, pageIndex, pageSize, ct)));
+            }
+            return RedirectToAction("ViewCategories", "Category");
         }
 
-        private void PaginationInfo(IEnumerable<PostViewModel> posts, int page)
+        private async Task SearchViewDataAsync(string term, int pageIndex, int pageSize)
         {
-            ViewBag.Page = page;
-            ViewBag.TotalPosts = posts.Count();
-            ViewBag.TotalPages = decimal.ToInt32(Math.Round(Math.Ceiling((decimal)posts.Count() / 5), 0));
+            PageInfoViewData(pageIndex, pageSize);
+            ViewData["SearchTerm"] = term;
+            if (User.Identity.IsAuthenticated is true)
+                ViewData["User"] = _mapper.Map<UserViewModel>(await _userService.FindUserAsync(User.Identity.Name));
         }
 
-        private async Task<int> TotalPostsCountAsync (string threadId, string view, string search)
+        private void PageInfoViewData(int pageIndex, int pageSize)
         {
-            IEnumerable<PostViewModel> result;
-
-            if (search != null)
-                result =  await _postService.SearchPostsAsync(search);
-            else if(view == "RecentPostsAsync")
-                result = await _postService.GetAllRecentPostsAsync();
-            else
-                result = await _postService.GetPostsByThreadAsync(threadId);
-
-            return result.Count();
+            ViewData["PageIndex"] = pageIndex;
+            ViewData["PageSize"] = pageSize;
         }
-        #endregion
+
+        private IActionResult ToWhichPageToReturn(Guid threadId, Guid userId, string username, string term, int pageIndex, int pageSize)
+        {
+            return true switch
+            {
+                bool _ when userId != Guid.Empty && string.IsNullOrEmpty(username) is false => RedirectToAction("FindUsersPosts", new { userId, username, pageIndex, pageSize }),
+                bool _ when threadId != Guid.Empty => RedirectToAction("ViewThread", "Thread", new { threadId, pageIndex, pageSize }),
+                bool _ when string.IsNullOrEmpty(term) is false => RedirectToAction("RedirectToSearchPosts", new { term, pageIndex, pageSize }),
+                _ => RedirectToAction("RecentPosts", new { pageIndex, pageSize }),
+            };
+        }
     }
 }

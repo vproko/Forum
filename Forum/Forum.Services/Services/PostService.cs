@@ -1,193 +1,85 @@
 ﻿using AutoMapper;
 using Forum.DataAccess.Interfaces;
 using Forum.DomainClasses.Models;
+using Forum.Dto.Models;
 using Forum.Services.Interfaces;
-using Forum.ViewModels.ViewModels;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace Forum.Services
+namespace Forum.Services.Services
 {
-    public class PostService : IPostService
+    public class PostService : BaseService, IPostService
     {
-        private readonly IRepository<Post> _postRepository;
-        private readonly IMapper _mapper;
+        public PostService(IUnitOfWork unitOfWork, IMapper mapper) : base(unitOfWork, mapper) { }
 
-        public PostService(IRepository<Post> postrepository, IMapper mapper)
+        public async Task CreateAsync(PostDto newPost, string username)
         {
-            _postRepository = postrepository;
-            _mapper = mapper;
+            _unitOfWork.Posts.Add(_mapper.Map<Post>(newPost));
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task<IEnumerable<PostViewModel>> GetAllPostAsync()
+        public async Task<IEnumerable<PostDto>> GetPostsByUsersIdAsync(Guid userId, int pageIndex, int pageSize, CancellationToken ct)
         {
-            return await Task.Run(() => _mapper.Map<IEnumerable<PostViewModel>>(_postRepository.GetAll()));
+            return _mapper.Map<IEnumerable<PostDto>>(await _unitOfWork.Posts.GetUsersPostsAsync(userId, pageIndex, pageSize, ct));
         }
 
-        public async Task<IEnumerable<PostViewModel>> GetReportedPostsByUserIdAsync(string userId)
+        public async Task<IEnumerable<PostDto>> GetReportedPostsPerPageAsync(int pageIndex, int pageSize, CancellationToken ct)
         {
-            return await Task.Run(() => _mapper.Map<IEnumerable<PostViewModel>>(_postRepository.GetAll().Where(p => p.UserID == userId && p.Reported == true)));
+            return _mapper.Map<IEnumerable<PostDto>>(await _unitOfWork.Posts.GetReportedPostsAsync(pageIndex, pageSize, ct));
         }
 
-        public async Task<IEnumerable<PostViewModel>> GetAllReportedPostsAsync()
+        public async Task<int> GetReportedPostsCountAsync()
         {
-            return await Task.Run(() => _mapper.Map<IEnumerable<PostViewModel>>(_postRepository.GetAll().Where(p => p.Reported == true).OrderBy(p => p.UserID)));
+            return await _unitOfWork.Posts.GetReportedPostsCountAsync();
         }
 
-        public async Task<IEnumerable<PostViewModel>> GetPostsByThreadAsync(string threadId)
+        public async Task UpdateAsync(PostDto post, string username)
         {
-            try
-            {
-                return await Task.Run(() => _mapper.Map<IEnumerable<PostViewModel>>(_postRepository.GetAll()
-                        .Where(p => p.ThreadID == threadId)
-                        .OrderBy(p => p.DateCreated)));
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            Post match = await _unitOfWork.Posts.FindAsync(post.PostId);
+            match.Content = post.Content ?? match.Content;
+            match.Edited = true;
+            match.EditedBy = post.EditedBy == "Admin" ? "Admin" : username;
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task<IEnumerable<PostViewModel>> GetAllRecentPostsAsync()
+        public async Task ReportAsync(Guid id)
         {
-            try
-            {
-                return await Task.Run(() => _mapper.Map<IEnumerable<PostViewModel>>(_postRepository.GetAll()
-                        .OrderByDescending(p => p.DateCreated.Date)
-                        .ThenByDescending(p => p.DateCreated.TimeOfDay)));
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            Post match = await _unitOfWork.Posts.FindAsync(id);
+            match.Reported = true;
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task<IEnumerable<PostViewModel>> SearchPostsAsync(string search)
+        public async Task UnReportAsync(Guid id)
         {
-            try
-            {
-                return await Task.Run(() => _mapper.Map<IEnumerable<PostViewModel>>(_postRepository.GetAll()
-                        .Where(p => p.Content.Contains(search, StringComparison.OrdinalIgnoreCase))
-                        .OrderByDescending(p => p.DateCreated.Date)
-                        .ThenByDescending(p => p.DateCreated.TimeOfDay)));
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            Post match = await _unitOfWork.Posts.FindAsync(id);
+            match.Reported = false;
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task<PostViewModel> GetPostByIdAsync(string postId)
+        public async Task RemoveAsync(Guid id)
         {
-            Post post = await Task.Run(() => _postRepository.GetById(postId));
-
-            if (post != null)
-                return _mapper.Map<PostViewModel>(post);
-            else
-                throw new Exception("there's no post with that id");
+            _unitOfWork.Posts.Remove(await _unitOfWork.Posts.FindAsync(id));
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task CreatePostAsync(PostViewModel post)
+        public async Task MovePostAsync(Guid postId, Guid threadId)
         {
-            int result = await Task.Run(() => _postRepository.Insert(_mapper.Map<Post>(post)));
-
-            CheckForError(result);
+            Post match = await _unitOfWork.Posts.FindAsync(postId);
+            match.DatePosted = DateTime.UtcNow;
+            match.ThreadId = threadId;
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task CreatePostReplyAsync(string originalPoster, string originalPost, PostViewModel reply)
+        public async Task<IEnumerable<PostDto>> GetRecentPostsPerPageAsync(int pageIndex, int pageSize, CancellationToken ct)
         {
-            string splitter = "e3f79af2";
-
-            reply.Content = "Posted by " + originalPoster + ": " + splitter + " " +
-                                           originalPost.Replace("e3f79af2", "") + " " + splitter + " " +
-                                           reply.Content;
-
-            int result = await Task.Run(() => _postRepository.Insert(_mapper.Map<Post>(reply)));
-
-            CheckForError(result);
+            return _mapper.Map<IEnumerable<PostDto>>(await _unitOfWork.Posts.GetRecentPostsAsync(pageIndex, pageSize, ct));
         }
 
-        public async Task ChangePostAsync(PostViewModel entity)
+        public async Task<IEnumerable<PostDto>> FindPostsAsync(string term, int pageIndex, int pageSize, CancellationToken ct)
         {
-            Post post = await Task.Run(() => _mapper.Map<Post>(_postRepository.GetById(entity.PostID)));
-
-            if (post != null)
-            {
-                post.PostID = entity.PostID;
-                post.UserID = entity.UserID;
-                post.ThreadID = entity.ThreadID;
-                post.Content = entity.Content;
-                post.DateCreated = entity.DateCreated;
-                post.Reported = entity.Reported;
-
-                int result = await Task.Run(() => _postRepository.Update(post));
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no post with that ID");
-        }
-
-        public async Task ReportUnreportPostAsync(string postId)
-        {
-            Post post = await Task.Run(() => _postRepository.GetById(postId));
-            post.Reported = !post.Reported;
-
-            await Task.Run(() => _postRepository.Update(post));
-        }
-
-        public async Task UnreportAllPostsByUserIdAsync(string userId)
-        {
-            IEnumerable<PostViewModel> usersPosts = await GetReportedPostsByUserIdAsync(userId);
-
-            foreach (PostViewModel post in usersPosts)
-            {
-                await ReportUnreportPostAsync(post.PostID);
-            }
-        }
-
-        public async Task MovePostAsync(string postId, string threadId)
-        {
-            Post post = await Task.Run(() => _postRepository.GetById(postId));
-
-            if (post != null)
-            {
-                post.ThreadID = threadId;
-                int result = await Task.Run(() => _postRepository.Update(post));
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no post with that id");
-        }
-
-        public async Task DeletePostAsync(string postId)
-        {
-            Post post = await Task.Run(() =>_postRepository.GetById(postId));
-
-            if (post != null)
-            {
-                int result = await Task.Run(() => _postRepository.Delete(postId));
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no post with that id");
-        }
-
-        public async Task DeleteReportedPostsByUserIdAsync(string userId)
-        {
-            IEnumerable<PostViewModel> reportedPosts = await GetReportedPostsByUserIdAsync(userId);
-
-            foreach (PostViewModel post in reportedPosts)
-            {
-                await DeletePostAsync(post.PostID);
-            }
-        }
-
-        private void CheckForError(int result)
-        {
-            if (result == -1)
-                throw new Exception("Something went wrong");
+            return _mapper.Map<IEnumerable<PostDto>>(await _unitOfWork.Posts.SearchPostsAsync(term, pageIndex, pageSize, ct));
         }
     }
 }

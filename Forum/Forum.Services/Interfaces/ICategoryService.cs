@@ -1,4 +1,5 @@
-﻿using Forum.ViewModels.ViewModels;
+﻿using Forum.Dto.Models;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -6,10 +7,10 @@ namespace Forum.Services.Interfaces
 {
     public interface ICategoryService
     {
-        Task<IEnumerable<CategoryViewModel>> GetAllCategoriesAsync();
-        Task<CategoryViewModel> GetCategoryByIdAsync(string categoryId);
-        Task CreateCategoryAsync(CategoryViewModel category);
-        Task UpdateCategoryAsync(CategoryViewModel update);
-        Task DeleteCategoryAsync(string categoryId);
+        Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync(int pageIndex, int pageSize);
+        Task<CategoryDto> GetCategoryByIdAsync(Guid categoryId, int pageIndex, int pageSize);
+        Task CreateAsync(CategoryDto category);
+        Task UpdateAsync(CategoryDto category);
+        Task RemoveAsync(Guid id);
     }
 }

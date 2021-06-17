@@ -1,105 +1,81 @@
 ﻿using AutoMapper;
 using Forum.DataAccess.Interfaces;
 using Forum.DomainClasses.Models;
+using Forum.Dto.Models;
 using Forum.Services.Interfaces;
 using Forum.ViewModels.ViewModels;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
-namespace Forum.Services
+namespace Forum.Services.Services
 {
-    public class ThreadService : IThreadService
+    public class ThreadService : BaseService, IThreadService
     {
-        private readonly IRepository<Thread> _threadRepository;
-        private readonly IMapper _mapper;
+        public ThreadService(IUnitOfWork unitOfWork, IMapper mapper) : base(unitOfWork, mapper) { }
 
-        public ThreadService(IRepository<Thread> threadRepository, IMapper mapper)
+        public async Task CreateAsync(ThreadViewModel newThread)
         {
-            _threadRepository = threadRepository;
-            _mapper = mapper;
+            _unitOfWork.Threads.Add(_mapper.Map<Thread>(_mapper.Map<ThreadDto>(newThread)));
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task<IEnumerable<ThreadViewModel>> GetAllThreadsAsync()
+        public async Task<ThreadDto> FindThreadWithRelatedDataAsync(Guid id, int pageIndex, int pageSize)
         {
-            return await Task.Run(() => _mapper.Map<IEnumerable<ThreadViewModel>>(_threadRepository.GetAll()));
+            return _mapper.Map<ThreadDto>(await _unitOfWork.Threads.GetThreadByIdAsync(id, pageIndex, pageSize));
         }
 
-        public async Task<IEnumerable<ThreadViewModel>> GetThreadsByCategoryAsync(string categoryId)
+        public async Task RemoveAsync(Guid id)
         {
-            return await Task.Run(() => _mapper.Map<IEnumerable<ThreadViewModel>>(_threadRepository.GetAll()
-                .Where(t => t.CategoryID == categoryId)
-                .OrderByDescending(t => t.DateCreated.Date)
-                .ThenByDescending(t => t.DateCreated.TimeOfDay)));
+            _unitOfWork.Threads.Remove(await _unitOfWork.Threads.FindAsync(id));
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task<ThreadViewModel> GetThreadByIdAsync(string threadId)
+        public async Task UpdateAsync(ThreadDto thread)
         {
-            Thread thread = await Task.Run(() => _threadRepository.GetById(threadId));
-
-            if (thread != null)
-                return _mapper.Map<ThreadViewModel>(thread);
-            else
-                throw new Exception("There's no thread with that id");
+            Thread match = await _unitOfWork.Threads.FindAsync(thread.ThreadId);
+            match.Title = thread.Title ?? match.Title;
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task CreateThreadAsync(ThreadViewModel entity)
+        public async Task MoveThreadAsync(Guid threadId, Guid categoryId)
         {
-            int result = await Task.Run(() => _threadRepository.Insert(_mapper.Map<Thread>(entity)));
-
-            CheckForError(result);
+            Thread match = await _unitOfWork.Threads.FindAsync(threadId);
+            match.CategoryId = categoryId;
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task UpdateThreadAsync(ThreadViewModel entity)
+        public async Task<IEnumerable<ThreadDto>> GetThreadsBySearchAsync(string term)
         {
-            Thread thread = await Task.Run(() => _mapper.Map<Thread>(_threadRepository.GetById(entity.ThreadID)));
-
-            if (thread != null)
-            {
-                thread.ThreadID = entity.ThreadID;
-                thread.Title = entity.Title;
-                thread.CategoryID = entity.CategoryID;
-                thread.DateCreated = entity.DateCreated;
-
-                int result = await Task.Run(() => _threadRepository.Update(thread));
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no thread with that id");
+            return _mapper.Map<IEnumerable<ThreadDto>>(await _unitOfWork.Threads.SearchThreadsAsync(term));
         }
 
-        public void MoveThread(string categoryId, string threadId)
+        public async Task StickThreadAsync(Guid threadId)
         {
-            Thread thread = _threadRepository.GetById(threadId);
-
-            if (thread != null)
-            {
-                thread.CategoryID = categoryId;
-                int result = _threadRepository.Update(thread);
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no thread with that id");
+            Thread match = await _unitOfWork.Threads.FindAsync(threadId);
+            match.Sticky = true;
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task DeleteThreadAsync(string threadId)
+        public async Task UnStickThreadAsync(Guid threadId)
         {
-            Thread thread = await Task.Run(() =>_threadRepository.GetById(threadId));
-
-            if (thread != null)
-            {
-                int result = await Task.Run(() => _threadRepository.Delete(threadId));
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no thread with that id");
+            Thread match = await _unitOfWork.Threads.FindAsync(threadId);
+            match.Sticky = false;
+            await _unitOfWork.CompleteAsync();
         }
 
-        private void CheckForError(int result)
+        public async Task LockThreadAsync(Guid threadId)
         {
-            if (result == -1)
-                throw new Exception("Something went wrong");
+            Thread match = await _unitOfWork.Threads.FindAsync(threadId);
+            match.Locked = true;
+            await _unitOfWork.CompleteAsync();
+        }
+
+        public async Task UnlockThreadAsync(Guid threadId)
+        {
+            Thread match = await _unitOfWork.Threads.FindAsync(threadId);
+            match.Locked = false;
+            await _unitOfWork.CompleteAsync();
         }
     }
 }

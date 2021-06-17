@@ -1,0 +1,30 @@
+﻿@using Forum.ViewModels.ViewModels
+@model CategoryViewModel
+
+@{
+    int pageIndex = (int)ViewData["PageIndex"];
+    int pageSize = (int)ViewData["PageSize"];
+}
+
+<div class="modal fade edit-category-modal" id="@("category-" + Model.CategoryId)" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header pb-0">
+                <h5 class="modal-title" id="exampleModalLabel">Edit:</h5>
+            </div>
+            <div class="modal-body text-center pt-0">
+                <form asp-action="UpdateCategory" asp-controller="Category" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize" method="post">
+                    <div class="form-group">
+                        <input type="hidden" asp-for="CategoryId" value="@Model.CategoryId" />
+                        <label class="form-label" asp-for="@Model.Name"></label>
+                        <input type="text" class="form-control" asp-for="@Model.Name">
+                    </div>
+                    <div class="py-3 text-center" id="move-to-btns">
+                        <button class="btn register-btn reset mx-1" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn register-btn submit mx-1" id="edit-category-btn">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

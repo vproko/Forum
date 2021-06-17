@@ -1,0 +1,286 @@
+﻿@using Forum.ViewModels.ViewModels
+@model ReportsViewModel
+
+@{
+    ViewData["Title"] = "Reported";
+    var pageInfo = (ReportsPageInfoModel)ViewData["PageInfo"];
+    UserViewModel admin = pageInfo.Admin;
+    int postIdx = pageInfo.PostIdx;
+    int replyIdx = pageInfo.ReplyIdx;
+    int postPgSize = pageInfo.PostPgSize;
+    int replyPgSize = pageInfo.ReplyPgSize;
+    string whichTab = pageInfo.WhichTab;
+}
+
+<div class="container-fluid complains">
+
+    <div class="row">
+        <div class="col-3" style="margin-top: 64px;">
+            <div class="nav flex-column nav-pills py-3 px-3" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <a asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize" class="nav-link text-center mb-3 @(whichTab == "posts" ? "active" : string.Empty)" id="v-pills-posts-tab">Posts</a>
+                <a asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize" class="nav-link text-center @(whichTab == "replies" ? "active" : string.Empty)" id="v-pills-replies-tab">Replies</a>
+            </div>
+        </div>
+        <div class="col-9 mt-3">
+            <div class="tab-content" id="v-pills-tabContent">
+                <div class="tab-pane fade @(whichTab == "posts" ? "show active" : string.Empty)" id="v-pills-posts" role="tabpanel" aria-labelledby="v-pills-posts-tab">
+                    <div class="d-flex justify-content-end mb-3">
+                        <div class="dropdown">
+                            <button class="px-2 pt-0 pb-1 btn dropdown-toggle" type="button" id="dropdownPageSize" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                @postPgSize
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="dropdownPageSize" style="min-width:100%!important;">
+                                <a class="dropdown-item text-center" asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="5" asp-route-replyPgSize="@replyPgSize">5</a>
+                                <a class="dropdown-item text-center" asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="7" asp-route-replyPgSize="@replyPgSize">7</a>
+                                <a class="dropdown-item text-center" asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="10" asp-route-replyPgSize="@replyPgSize">10</a>
+                            </div>
+                        </div>
+                    </div>
+                    @if ((Model.ReportedPosts == null) is false)
+                    {
+                        <ul class="w-100 mb-0">
+                            @foreach (PostViewModel post in Model.ReportedPosts)
+                            {
+                                <li>
+                                    <div class="post font-weight-bolder">
+                                        <div class="row">
+                                            <div class="post-info pl-3">
+                                                <div>
+                                                    <img src="~/uploads/no-image.jpg" class="image" alt="No image" />
+                                                </div>
+                                                <div>
+                                                    <ul>
+                                                        <li class="font-weight-bolder" style="color:coral;">
+                                                            @post.User.UserName
+                                                        </li>
+                                                        <li>
+                                                            <i class="far fa-user p-0 user-icons" title="Joined"></i> <span style="color:cadetblue;">@post.User.Joined.ToString("dd/MM/yyyy")</span>
+                                                        </li>
+                                                        <li>
+                                                            <i class="far fa-comments p-0 user-icons" title="Posts"></i> <span style="color:cadetblue;">@(post.User.PostsCount + post.User.RepliesCount)</span>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            <div class="post-content pr-3">
+                                                <div class="post-body">
+                                                    <p class="mb-0 date-info">
+                                                        @if (post.Edited is true)
+                                                        {
+                                                            <span class="date-info-text">Edited by <span class="font-weight-bolder" style="color:coral;">@post.EditedBy</span> on</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="date-info-text">Posted on</span>
+                                                        }
+                                                        <span class="font-weight-bolder" style="color:cadetblue;">@post.DatePosted.ToString("dd/MM/yyyy")</span> <span class="date-info-text">at</span> <span class="font-weight-bolder" style="color:cadetblue;">@post.DatePosted.ToLocalTime().ToString("HH:mm")</span>:
+                                                    </p>
+                                                    <p class="mb-0 mt-2 pl-3 post-text">
+                                                        @post.Content
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (User.Identity.IsAuthenticated is true)
+                                    {
+                                        <div class="d-flex justify-content-end mt-2">
+                                            @if (User.Identity.Name == post.Username || User.IsInRole("admin") is true)
+                                            {
+                                                ViewData["Receiver"] = post.User.UserName;
+                                                ViewData["PostsIndex"] = postIdx;
+                                                ViewData["RepliesIndex"] = replyIdx;
+                                                ViewData["PostsPageSize"] = postPgSize;
+                                                ViewData["RepliesPageSize"] = replyPgSize;
+                                                ViewData["WhichTab"] = "posts";
+                                                <a class="reply-btn mr-1" title="Send Warning" data-toggle="modal" data-target='@("#message-" + post.UserId)'>
+                                                    <i id="warning" class="fas fa-envelope p-0 user-icons"></i>
+                                                </a>
+                                                <partial name="~/Views/Message/_CreateMessageAdminModal.cshtml" model="new MessageViewModel { SenderId = admin.UserId, ReceiverId = post.UserId, SenderUsername = admin.UserName }" />
+
+                                                <a class="edit-btn mr-1" title="Edit" data-toggle="modal" data-target='@("#edit-" + post.PostId)'>
+                                                    <i class="fas fa-pen"></i>
+                                                </a>
+                                                <partial name="~/Views/Post/_EditPostAdminModal.cshtml" model="post" />
+
+                                                <a class="clean-btn mr-1" title="Clean" asp-action="UnReportPost" asp-controller="Post" asp-route-postId="@post.PostId" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">
+                                                    <i class="fas fa-eraser"></i>
+                                                </a>
+                                                <a class="delete-btn mr-1" title="Delete" asp-action="DeletePostAdmin" asp-controller="Post" asp-route-postId="@post.PostId" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+
+                                    <br />
+                                </li>
+                            }
+                        </ul>
+                        if ((postIdx >= 1 && Model.ReportedPosts.Count() == postPgSize) || (postIdx > 1 && ((Model.ReportedPosts == null) is false)))
+                        {
+                            <div class="mt-2 mb-4 text-center">
+                                @if (postIdx == 1 && Model.ReportedPosts.Count() == postPgSize)
+                                {
+                                    <a class="page-index-recent mx-1" asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@(postIdx + 1)" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Next</a>
+                                }
+                                @if (postIdx > 1 && Model.ReportedPosts.Count() == postPgSize)
+                                {
+                                    <a class="page-index-recent mx-1" asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@(postIdx - 1)" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Prev</a>
+                                    <a class="page-index-recent mx-1" asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@(postIdx + 1)" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Next</a>
+                                }
+                                @if (postIdx > 1 && (((Model.ReportedPosts == null) is false) && Model.ReportedPosts.Count() < postPgSize))
+                                {
+                                    <a class="page-index-recent mx-1" asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@(postIdx - 1)" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Prev</a>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @if (((Model.ReportedPosts is null || Model.ReportedPosts.Count() == 0) is true) && postIdx == 1)
+                    {
+                        <h1 class="text-center">There're no complains.</h1>
+                    }
+                    @if (((Model.ReportedPosts is null || Model.ReportedPosts.Count() == 0) is true) && postIdx > 1)
+                    {
+                        <div class="mt-2 mb-4 text-center">
+                            <a class="page-index-recent mx-1" asp-action="ReportedPosts" asp-controller="Post" asp-route-postIdx="@(postIdx - 1)" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Back</a>
+                        </div>
+                    }
+                </div>
+                <div class="tab-pane fade @(whichTab == "replies" ? "show active" : string.Empty )" id="v-pills-replies" role="tabpanel" aria-labelledby="v-pills-replies-tab">
+                    <div class="d-flex justify-content-end mb-3">
+                        <div class="dropdown">
+                            <button class="px-2 pt-0 pb-1 btn dropdown-toggle" type="button" id="dropdownPageSize" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                @replyPgSize
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="dropdownPageSize" style="min-width:100%!important;">
+                                <a class="dropdown-item text-center" asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="5">5</a>
+                                <a class="dropdown-item text-center" asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="7">7</a>
+                                <a class="dropdown-item text-center" asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="10">10</a>
+                            </div>
+                        </div>
+                    </div>
+                    @if ((Model.ReportedReplies == null) is false)
+                    {
+                        <ul class="w-100 mb-0">
+                            @foreach (ReplyViewModel reply in Model.ReportedReplies)
+                            {
+                                <li>
+                                    <div class="post font-weight-bolder">
+                                        <div class="row">
+                                            <div class="post-info pl-3">
+                                                <div>
+                                                    <img src="~/uploads/no-image.jpg" class="image" alt="No image" />
+                                                </div>
+                                                <div>
+                                                    <ul>
+                                                        <li class="font-weight-bolder" style="color:coral;">
+                                                            @reply.User.UserName
+                                                        </li>
+                                                        <li>
+                                                            <i class="far fa-user p-0 user-icons" title="Joined"></i> <span style="color:cadetblue;">@reply.User.Joined.ToString("dd/MMM/yyyy")</span>
+                                                        </li>
+                                                        <li>
+                                                            <i class="far fa-comments p-0 user-icons" title="Posts"></i> <span style="color:cadetblue;">@(reply.User.PostsCount + reply.User.RepliesCount)</span>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            <div class="post-content pr-3">
+                                                <div class="post-body">
+                                                    <p class="mb-0 pb-2 font-weight-bold date-info">
+                                                        @if (reply.Edited is true)
+                                                        {
+                                                            if (reply.Username != reply.EditedBy)
+                                                            {
+                                                                <span class="date-info-text">Originally posted by <span style="color:cadetblue;font-weight:bolder;">@reply.Username</span>, edited by <span class="font-weight-bolder" style="color:coral;">@reply.EditedBy</span> on</span>
+                                                            }
+                                                            if (reply.Username == reply.EditedBy)
+                                                            {
+                                                                <span class="date-info-text">Edited by <span class="font-weight-bolder" style="color:coral;">@reply.EditedBy</span> on</span>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="date-info-text">Replied by <span style="color:coral;font-weight:bolder;">@reply.Username</span> on</span>
+                                                        }
+                                                        <span style="color:cadetblue;">@reply.DateReplied.ToString("dd/MM/yyyy")</span> <span class="date-info-text">at</span> <span style="color:cadetblue;">@reply.DateReplied.ToLocalTime().ToString("HH:mm")</span>:
+                                                    </p>
+                                                    <p class="mb-0 mt-2 pl-3 post-text">
+                                                        <b>@reply.Content</b>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @if (User.Identity.IsAuthenticated is true)
+                                    {
+                                        @if (User.Identity.IsAuthenticated is true && User.IsInRole("admin") is true)
+                                        {
+                                            ViewData["Receiver"] = reply.User.UserName;
+                                            ViewData["PostsIndex"] = postIdx;
+                                            ViewData["RepliesIndex"] = replyIdx;
+                                            ViewData["PostsPageSize"] = postPgSize;
+                                            ViewData["RepliesPageSize"] = replyPgSize;
+                                            ViewData["WhichTab"] = "replies";
+                                            <div class="d-flex justify-content-end mt-2">
+                                                <a class="reply-btn mr-1" title="Send Warning" data-toggle="modal" data-target='@("#message-" + reply.UserId)'>
+                                                    <i id="warning" class="fas fa-envelope p-0 user-icons"></i>
+                                                </a>
+                                                <partial name="~/Views/Message/_CreateMessageAdminModal.cshtml" model="new MessageViewModel { SenderId = admin.UserId, ReceiverId = reply.UserId, SenderUsername = admin.UserName }" />
+
+                                                <a class="edit-btn mr-1" title="Edit" data-toggle="modal" data-target='@("#edit-reply-" + reply.ReplyId)'>
+                                                    <i class="fas fa-pen"></i>
+                                                </a>
+                                                <partial name="~/Views/Reply/_EditReplyAdminModal.cshtml" model="reply" />
+
+                                                <a class="clean-btn mr-1" title="Clean" asp-action="UnReportReply" asp-controller="Reply" asp-route-replyId="@reply.ReplyId" asp-route-postId="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">
+                                                    <i class="fas fa-eraser"></i>
+                                                </a>
+                                                <a class="delete-btn mr-1" title="Delete" asp-action="DeleteReplyAdmin" asp-controller="Reply" asp-route-replyId="@reply.ReplyId" asp-route-postId="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        }
+                                    }
+                                    <br />
+                                </li>
+                            }
+                        </ul>
+                        if ((replyIdx >= 1 && Model.ReportedReplies.Count() == replyPgSize) || (replyPgSize > 1 && ((Model.ReportedReplies == null) is false)))
+                        {
+                            <div class="mt-2 mb-3 text-center">
+                                @if (replyIdx == 1 && Model.ReportedReplies.Count() == replyPgSize)
+                                {
+                                    <a class="page-index-recent mx-1" asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@(replyIdx + 1)" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Next</a>
+                                }
+                                @if (replyIdx > 1 && Model.ReportedReplies.Count() == replyPgSize)
+                                {
+                                    <a class="page-index-recent mx-1" asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@(replyIdx - 1)" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Prev</a>
+                                    <a class="page-index-recent mx-1" asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@(replyIdx + 1)" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Next</a>
+                                }
+                                @if (replyIdx > 1 && (((Model.ReportedReplies == null) is false) && Model.ReportedReplies.Count() < replyPgSize))
+                                {
+                                    <a class="page-index-recent mx-1" asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@(replyIdx - 1)" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Prev</a>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @if (((Model.ReportedReplies is null || Model.ReportedReplies.Count() == 0) is true) && replyIdx == 1)
+                    {
+                        <h1 class="text-center">There're no complains.</h1>
+                    }
+                    @if (((Model.ReportedReplies is null || Model.ReportedReplies.Count() == 0) is true) && replyIdx > 1)
+                    {
+                        <div class="mt-2 mb-4 text-center">
+                            <a class="page-index-recent mx-1" asp-action="ReportedReplies" asp-controller="Reply" asp-route-postIdx="@postIdx" asp-route-replyIdx="@(replyIdx - 1)" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize">Back</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

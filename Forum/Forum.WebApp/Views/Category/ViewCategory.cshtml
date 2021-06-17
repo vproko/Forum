@@ -1,0 +1,295 @@
+﻿@using Forum.ViewModels.ViewModels
+@model CategoryViewModel
+
+@{
+    ViewData["Title"] = Model.Name;
+    UserViewModel user = (UserViewModel)ViewData["User"];
+    int pageIndex = (int)ViewData["PageIndex"];
+    int pageSize = (int)ViewData["PageSize"];
+    int totalPages = (int)ViewData["TotalPages"];
+    int pagesCount = Convert.ToInt32(Math.Ceiling((decimal)Model.ThreadsCount / pageSize));
+    int afterDeletePagesCount = Convert.ToInt32(Math.Ceiling((decimal)(Model.ThreadsCount - 1) / pageSize));
+}
+
+<div class="container-fluid category">
+    <div class="w-100 d-flex justify-content-between mb-4">
+        <div>
+            <a class="home-btn d-inline-block text-center py-1" asp-action="ViewCategories" asp-controller="Category" title="Main Page">
+                <i class="fas fa-home"></i>
+            </a>
+        </div>
+        <div class="dropdown">
+            <button class="px-2 pt-0 pb-1 btn dropdown-toggle" type="button" id="dropdownPageSize" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                @pageSize
+            </button>
+            <div class="dropdown-menu" aria-labelledby="dropdownPageSize" style="min-width:100%!important;">
+                <a class="dropdown-item text-center" asp-action="ViewCategory" asp-controller="Category" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="1" asp-route-pageSize="5">5</a>
+                <a class="dropdown-item text-center" asp-action="ViewCategory" asp-controller="Category" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="1" asp-route-pageSize="7">7</a>
+                <a class="dropdown-item text-center" asp-action="ViewCategory" asp-controller="Category" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="1" asp-route-pageSize="10">10</a>
+            </div>
+        </div>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>
+                    <span id="category-title">@Model.Name.ToUpper()</span>
+                    @if (User.IsInRole("admin"))
+                    {
+
+                        ViewData["PageIndex"] = pageIndex;
+                        ViewData["PageSize"] = pageSize;
+
+                        <a id="category-edit" class="ml-3 edit-category" title="Edit" data-toggle="modal" data-target='@("#category-" + Model.CategoryId)'>
+                            <i class="fas fa-pen"></i>
+                        </a>
+                        <partial name="~/Views/Category/_EditCategoryModal.cshtml" model="new CategoryViewModel { CategoryId = Model.CategoryId, Name = Model.Name }" />
+                        <a id="category-delete" class="ml-3 edit-category" title="Delete" asp-action="DeleteCategory" asp-controller="Category" asp-route-categoryId="@Model.CategoryId">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    }
+                </th>
+                <th class="font-weight-normal text-center">
+                    Posts
+                </th>
+                <th class="font-weight-normal text-right">
+                    Created
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Threads.Count() > 0)
+            {
+                @foreach (ThreadViewModel thread in Model.Threads)
+                {
+                    <tr>
+                        <td class="text-left thread-title">
+                            <div class="d-flex justify-content-between thread-buttons">
+                                <div>
+                                    <a class="font-weight-bold text-muted" asp-action="ViewThread" asp-controller="Thread" asp-route-threadId="@thread.ThreadId">
+                                        @thread.Title
+                                    </a>
+                                </div>
+                                @if (User.IsInRole("admin") is true)
+                                {
+                                    <div class="d-flex justify-content-end thread-control">
+                                        @if (thread.Sticky is false)
+                                        {
+                                            <a class="mr-2" title="Stick" asp-action="MakeThreadSticky" asp-controller="Thread" asp-route-threadId="@thread.ThreadId" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize">
+                                                <i class="fas fa-neuter"></i>
+                                            </a>
+                                        }
+                                        else if (thread.Sticky is true)
+                                        {
+                                            <a class="mx-2" title="UnStick" asp-action="MakeThreadNonSticky" asp-controller="Thread" asp-route-threadId="@thread.ThreadId" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize">
+                                                <i class="fas fa-map-pin" style="color: coral;"></i>
+                                            </a>
+                                        }
+                                        @if (thread.Locked is false)
+                                        {
+                                            <a class="mx-2" title="Lock" asp-action="SetThreadLocked" asp-controller="Thread" asp-route-threadId="@thread.ThreadId" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize">
+                                                <i class="fas fa-lock-open"></i>
+                                            </a>
+                                        }
+                                        else if (thread.Locked is true)
+                                        {
+                                            <a class="mx-2" title="UnLock" asp-action="SetThreadUnlocked" asp-controller="Thread" asp-route-threadId="@thread.ThreadId" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize">
+                                                <i class="fas fa-lock" style="color: coral;"></i>
+                                            </a>
+                                        }
+                                        @{
+                                            ViewData["PageIndex"] = pageIndex;
+                                            ViewData["PageSize"] = pageSize;
+                                            <a class="mx-2" title="Edit" data-toggle="modal" data-target="@("#edit-thread-" + thread.ThreadId)">
+                                                <i class="fas fa-pen"></i>
+                                            </a>
+                                            <partial name="~/Views/Thread/_EditThreadModal.cshtml" model="thread" />
+                                        }
+                                        <a class="mx-2 move-thread" title="Move">
+                                            <i id="@thread.ThreadId" data-categoryId="@thread.CategoryId" class="fas fa-dolly"></i>
+                                        </a>
+                                        <a class="ml-2" title="Delete" asp-action="DeleteThread" asp-controller="Thread" asp-route-threadId="@thread.ThreadId" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@(afterDeletePagesCount < pageIndex ? afterDeletePagesCount : pageIndex)" asp-route-pageSize="@pageSize">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex justify-content-end thread-control topics-symbols">
+                                        @if (thread.Sticky is true)
+                                        {
+                                            <i class="fas fa-map-pin" title="Sticked"></i>
+                                        }
+                                        @if (thread.Locked is true)
+                                        {
+                                            <i class="fas fa-lock" title="Locked"></i>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </td>
+                        <td class="text-center date-info-text thread-count" style="color:#696969;">
+                            @thread.PostsCount
+                        </td>
+                        <td class="text-right date-info-text thread-date" style="color:#696969;">
+                            @thread.DateCreated.ToString("dd MMMM, yyyy")
+                        </td>
+                    </tr>
+                }
+            }
+            @if (Model.Threads.Count() == 0)
+            {
+                <tr>
+                    <td class="empty-category text-center font-weight-bolder" colspan="3">
+                        There're no threads
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (totalPages > 1 && Model.Threads.Count() != 0)
+    {
+        <div class="mt-5 mb-4 text-center">
+            @if (pageIndex == 1 && Model.Threads.Count() == pageSize)
+            {
+                <a class="page-index-recent mx-1" asp-action="ViewCategory" asp-controller="Category" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@(pageIndex + 1)" asp-route-pageSize="@pageSize">Next</a>
+            }
+            @if (pageIndex > 1 && Model.Threads.Count() == pageSize)
+            {
+                <a class="page-index-recent mx-1" asp-action="ViewCategory" asp-controller="Category" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@(pageIndex - 1)" asp-route-pageSize="@pageSize">Prev</a>
+                <a class="page-index-recent mx-1" asp-action="ViewCategory" asp-controller="Category" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@(pageIndex + 1)" asp-route-pageSize="@pageSize">Next</a>
+            }
+            @if (pageIndex > 1 && Model.Threads.Count() < pageSize)
+            {
+                <a class="page-index-recent mx-1" asp-action="ViewCategory" asp-controller="Category" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@(pageIndex - 1)" asp-route-pageSize="@pageSize">Prev</a>
+            }
+        </div>
+        <div class="d-flex justify-content-center mt-1">
+            <form class="form-inline" asp-action="ViewCategory" asp-controller="Category" method="get">
+                <div class="form-group">
+                    <input type="hidden" asp-for="CategoryId" value="@Model.CategoryId">
+                    <input type="hidden" name="pageSize" value="@pageSize" />
+                    <label id="go-to-label">Page:</label>
+                    <input type="text" id="go-to-page" class="form-control mx-sm-3" name="pageIndex" placeholder="@pageIndex / @totalPages">
+                    <button type="submit" id="go-to-btn">Go</button>
+                </div>
+            </form>
+        </div>
+    }
+    @if (Model.Threads.Count() == 0)
+    {
+        if (pageIndex > 1)
+        {
+            <h1 class="text-center">No more threads</h1>
+            <div class="mt-1 mt-5 text-center">
+                <a class="btn-lg page-index-recent mx-1" onClick="history.go(-1);">
+                    Back
+                </a>
+            </div>
+        }
+    }
+    @if (User.Identity.IsAuthenticated is true && user.Suspended is false)
+    {
+        <div class="container-fluid w-75 mt-5">
+            @{
+                var formModel = new ThreadViewModel();
+                <form asp-controller="Thread" asp-action="CreateThread" asp-route-categoryId="@Model.CategoryId" asp-route-pageIndex="@(Model.ThreadsCount % 5 == 0 ? (pagesCount + 1) : pagesCount)" asp-route-pageSize="@pageSize" method="post">
+                    <input type="hidden" asp-for="@formModel.CategoryId" value="@Model.CategoryId" />
+                    <input class="form-control" type="text" name="Title" placeholder="Thread's title..." />
+                    <div class="pt-3 text-center">
+                        <button class="btn register-btn reset" type="reset">Clear</button>
+                        &nbsp;
+                        <button class="btn register-btn submit" type="submit">Create</button>
+                    </div>
+                </form>
+            }
+        </div>
+    }
+
+    <!-- Change Category Modal -->
+
+    <div class="modal fade" id="CategoriesModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header justify-content-center">
+                    <h5 class="modal-title mt-5"></h5>
+                </div>
+                <div class="modal-body text-center" id="category-select">
+                </div>
+                <div class="py-3 d-flex justify-content-center" id="move-to-btn">
+                    <button type="button" class="btn register-btn reset my-auto" id="" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+
+        if ($(".edit-category-modal") !== null) {
+            $(".edit-category-modal").keyup(function (e) {
+                if (e.keyCode === 13) {
+                    $("#edit-category-btn").trigger("click");
+                }
+            })
+        }
+
+        const createSelectCategories = (data, threadId, categoryId) => {
+            $("#CategoriesModal h5").text("");
+            $("#category-select").empty();
+            let select = $("<select>").attr({ name: "categories", id: `${threadId}` }).appendTo("#CategoriesModal .modal-body");
+            for (const el in data) {
+                if (data[el].categoryId !== categoryId) {
+                    select.append($("<option>").attr("value", `${data[el].categoryId}`).text(`${data[el].name}`).on("click", function (e) {
+                        changeCategory(threadId, e.target.value);
+                    }));
+                }
+            }
+            $("#CategoriesModal h5").text("Choose Category:");
+            $('#CategoriesModal').modal('show');
+        };
+
+        if ($(".move-thread") !== []) {
+            for (const btn of $(".move-thread")) {
+                btn.addEventListener("click", function (e) {
+                    $.ajax({
+                        url: '@Url.Action("GetCategoryies", "Category")',
+                        type: 'POST',
+                        contentType: "application/json",
+                        success: function (data) {
+                            createSelectCategories(data, e.target.id, $(e.target).attr("data-categoryId"));
+                        }
+                    })
+                })
+            }
+        }
+
+        $("#CategoriesModal").on("hidden.bs.modal", function () {
+            $("#CategoriesModal h5").text("");
+            $("#category-select").empty();
+            $('#CategoriesModal').modal('hide');
+        })
+
+        const changeCategory = (threadId, categoryId) => {
+            $.ajax({
+                url: '@Url.Action("ChangeCategory", "Thread")' + `?threadId=${threadId}&categoryId=${categoryId}`,
+                type: 'POST',
+                contentType: "application/json",
+                success: function (data) {
+                    $("#CategoriesModal h5").text(data.message);
+                    $("#category-select").empty();
+                    $("#CategoriesModal").on("hidden.bs.modal", function () {
+                        $('#CategoriesModal').modal('hide');
+                        location.reload(true);
+                    })
+                },
+                error: function (error) {
+                    $("#CategoriesModal h5").text(error.message);
+                }
+            })
+        }
+
+    </script>
+}

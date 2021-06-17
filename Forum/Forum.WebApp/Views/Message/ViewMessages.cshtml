@@ -1,0 +1,162 @@
+﻿@using Forum.ViewModels.ViewModels
+@model IEnumerable<MessageViewModel>
+
+@{
+    ViewData["Title"] = "Messages";
+    int index = (int)ViewData["IndexPage"];
+    int totalPages = (int)ViewData["TotalPages"];
+}
+
+<div class="container-fluid" id="main-messages">
+    <ul>
+        @if (Model.Count() > 0)
+        {
+            @foreach (MessageViewModel message in Model)
+            {
+                <li>
+                    <div class="d-flex mb-3 messages">
+                        <div class="w-75 message-main rounded position-relative">
+                            <div class="tooltip-user" id="@message.MessageId" data-senderId="@message.SenderId" data-username="@message.SenderUsername">
+                                <div class="d-flex justify-content-start font-weight-bolder">
+                                    <div>
+                                        <img src="/uploads/no-image.jpg" class="image d-block sender-image" alt="users image" style="width:53px;">
+                                    </div>
+                                    <div class="w-75 mx-1 my-auto">
+                                        <a class="text-left sender-username" style="color:coral;"></a>
+                                        <div class="d-flex justify-content-between">
+                                            <div class="text-left">
+                                                <div style="color:cadetblue;">Joined:</div>
+                                                <div style="color:cadetblue;">Posts: </div>
+                                                <div style="color:cadetblue;">Replies:</div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="sender-joined"></div>
+                                                <div class="sender-posts-count"></div>
+                                                <div class="sender-replies-count"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-left message-info">
+                                <span class="font-weight-normal">From </span>
+                                <span class="font-weight-bolder username" style="color:coral;">@message.SenderUsername</span>
+                                <span class="font-weight-normal">, sent on </span>
+                                <span class="font-weight-bolder" style="color:cadetblue;">@message.DateSent.ToString("dd/MMM/yyyy")</span>
+                                <span class="font-weight-normal"> at </span>
+                                <span class="font-weight-bolder" style="color:cadetblue;">@message.DateSent.ToString("HH:mm")</span>:
+                            </div>
+                            <div class="text-left font-weight-bolder mt-1 message-content">
+                                <p>@message.Content</p>
+                            </div>
+                        </div>
+                        <div class="message-btns">
+                            <div class="h-50">
+                                <a class="btn register-btn submit my-auto reply-msg" data-toggle="modal" data-target='@("#message-reply-" + message.MessageId)'>
+                                    Reply
+                                </a>
+                            </div>
+                            <div class="h-50">
+                                <a class="btn register-btn reset my-auto delete-msg" asp-action="DeleteMessage" asp-controller="Message" asp-route-messageId="@message.MessageId" asp-route-pageIndex="@index">
+                                    Delete
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <partial name="~/Views/Message/_MessageReplyModal.cshtml" model="message" />
+            }
+        }
+    </ul>
+    @if (totalPages > 1 && Model.Count() != 0)
+    {
+        <div class="mt-1 mb-4 text-center">
+            @if (index == 1 && Model.Count() == 5)
+            {
+                <a class="page-index-recent mx-1" asp-action="ViewMessages" asp-controller="Message" asp-route-pageIndex="@(index + 1)">Next</a>
+            }
+            @if (index > 1 && Model.Count() == 5)
+            {
+                <a class="page-index-recent mx-1" asp-action="ViewMessages" asp-controller="Message" asp-route-pageIndex="@(index - 1)">Prev</a>
+                <a class="page-index-recent mx-1" asp-action="ViewMessages" asp-controller="Message" asp-route-pageIndex="@(index + 1)">Next</a>
+            }
+            @if (index > 1 && Model.Count() < 5)
+            {
+                <a class="page-index-recent mx-1" asp-action="ViewMessages" asp-controller="Message" asp-route-pageIndex="@(index - 1)">Prev</a>
+            }
+        </div>
+        <div class="d-flex justify-content-center mt-1">
+            <form class="form-inline" asp-action="ViewMessages" asp-controller="Message" method="get">
+                <div class="form-group">
+                    <label id="go-to-label">Page:</label>
+                    <input type="text" id="go-to-page" class="form-control mx-sm-3" name="pageIndex" placeholder="@index / @totalPages">
+                    <button type="submit" id="go-to-btn">Go</button>
+                </div>
+            </form>
+        </div>
+    }
+    @if (Model.Count() == 0)
+    {
+        if (index == 1)
+        {
+            <h1 class="position-relative text-center" style="top:37px;">You don't have Messages</h1>
+        }
+        else
+        {
+            <h1 class="text-center">No more messages</h1>
+            <div class="mt-1 mt-5 text-center">
+                <a class="btn-lg page-index-recent mx-1" onClick="history.go(-1);">
+                    Back
+                </a>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts{
+    <script type="text/javascript">
+
+        const fillInfo = (data, messageId, senderId, username) => {
+            if (data.avatar === "not set") {
+                $(`#${messageId} .sender-image`).css("width", "53px").attr("src", `/uploads/no-image.jpg`)
+            } else {
+                $(`#${messageId} .sender-image`).css("width", "53px").attr("src", `${data.avatar}`)
+            }
+            $(`#${messageId} .sender-username`).text(`${data.userName}`).attr("href", `/Post/FindUsersPosts?userId=${senderId}&username=${username}`);
+            $(`#${messageId} .sender-joined`).css("color", "cadetblue").text(`${data.joined.substring(8, 10)}/${data.joined.substring(5, 7)}/${data.joined.substring(0, 4)}`)
+            $(`#${messageId} .sender-posts-count`).css("color", "cadetblue").text(`${data.postsCount}`)
+            $(`#${messageId} .sender-replies-count`).css("color", "cadetblue").text(`${data.repliesCount}`)
+        }
+
+        const findSender = (messageId, senderId, username) => {
+            if ($(`#${messageId} .sender-username`).text() !== "") return;
+            $.ajax({
+                url: `@Url.Action("CheckSender", "User")` + `?userId=${senderId}`,
+                type: 'POST',
+                contentType: "application/json",
+                success: function (data) {
+                    fillInfo(data, messageId, senderId, username);
+                },
+                error: function (error) {
+                    $(".modal-title").text(error.response);
+                }
+            })
+        }
+
+        $(document).on("click", function () {
+            $('.tooltip-user[style*="display: block"]').hide();
+        })
+
+        if ($(".username") !== null) {
+            $(".username").each(function () {
+                const target = $(this).closest("div").parent().find(".tooltip-user");
+                $(this).on("mouseenter", function () {
+                    $('.tooltip-user[style*="display: block"]').hide();
+                    $(this).closest("div").parent().find(".tooltip-user").show();
+                    findSender(target.attr("id"), target.attr("data-senderId"), target.attr("data-username"));
+                 })
+            })
+        }
+
+    </script>
+}

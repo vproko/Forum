@@ -1,0 +1,38 @@
+﻿@using Forum.ViewModels.ViewModels
+@model MessageViewModel
+
+@{
+    ViewData["Title"] = "Message";
+    string receiver = (string)ViewData["Receiver"];
+    int postIdx = (int)ViewData["PostsIndex"];
+    int replyIdx = (int)ViewData["RepliesIndex"];
+    int postPgSize = (int)ViewData["PostsPageSize"];
+    int replyPgSize = (int)ViewData["RepliesPageSize"];
+    string whichTab = (string)ViewData["WhichTab"];
+
+}
+
+<div class="modal fade" id="@("message-" + Model.ReceiverId)" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Warning to <span style="color:coral;">@receiver</span></h5>
+            </div>
+            <div class="modal-body text-left">
+                <form asp-controller="Message" asp-action="CreateMessageAdmin" asp-route-postIdx="@postIdx" asp-route-replyIdx="@replyIdx" asp-route-postPgSize="@postPgSize" asp-route-replyPgSize="@replyPgSize" asp-route-whichTab="@whichTab" method="post">
+                    <div class="form-group mb-0">
+                        <input type="hidden" asp-for="ReceiverId" value="@Model.ReceiverId" />
+                        <input type="hidden" asp-for="SenderId" value="@Model.SenderId" />
+                        <input type="hidden" asp-for="SenderUsername" value="@Model.SenderUsername" />
+                        <textarea class="form-control font-weight-bold" name="Content" rows="3"></textarea>
+                    </div>
+                    <div class="pt-3 text-center">
+                        <button class="btn register-btn reset" data-dismiss="modal">Close</button>
+                        &nbsp;
+                        <button class="btn register-btn submit" type="submit">Send</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

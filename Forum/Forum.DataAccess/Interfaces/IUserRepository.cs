@@ -1,15 +1,15 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Forum.DomainClasses.Models;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Forum.DataAccess.Interfaces
 {
-    public interface IUserRepository<TUser> where TUser : IdentityUser
+    public interface IUserRepository : IRepository<User> 
     {
-        IEnumerable<TUser> GetAll();
-        TUser GetById(string id);
-        TUser GetByUsername(string username);
-        int Insert(TUser entity);
-        int Update(TUser entity);
-        int Delete(string id);
+        Task<IEnumerable<User>> GetUsersInfoAsync(int pageIndex, int pageSize);
+        Task<IEnumerable<User>> GetUsersInfoBySearchAsync(string searchTerm, int pageIndex, int pageSize);
+        Task<User> FindUserInfoAsync(Guid userId);
+        Task<User> GetUsersMessagesAsync(string username, int pageIndex, int pageSize);
     }
 }

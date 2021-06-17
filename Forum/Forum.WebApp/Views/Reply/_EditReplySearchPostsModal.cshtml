@@ -1,0 +1,38 @@
+﻿@using Forum.ViewModels.ViewModels
+@model ReplyViewModel
+
+@{
+    ViewData["Title"] = "Edit";
+    UserViewModel user = (UserViewModel)ViewData["User"];
+    string term = (string)ViewData["Term"];
+    int pageIndex = (int)ViewData["PageIndex"];
+    int pageSize = (int)ViewData["PageSize"];
+}
+
+<div class="modal fade" id="@("edit-reply-" + Model.ReplyId)" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Edit:</h5>
+            </div>
+            <div class="modal-body text-left">
+                <form asp-controller="Reply" asp-action="EditReply" asp-route-term="@term" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize" method="post">
+                    <input type="hidden" asp-for="ReplyId" value="@Model.ReplyId" />
+                    @if (user.IsItAdministrator is true && Model.User.IsItAdministrator is false)
+                    {
+                        <input type="hidden" asp-for="EditedBy" value="Admin" />
+                    }
+                    <input type="hidden" asp-for="EditedBy" value="@user.UserName" />
+                    <div class="form-group mb-0">
+                        <textarea class="form-control font-weight-bold" asp-for="Content" rows="3"></textarea>
+                    </div>
+                    <div class="pt-3 text-center">
+                        <button class="btn register-btn reset" data-dismiss="modal">Close</button>
+                        &nbsp;
+                        <button class="btn register-btn submit" type="submit">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

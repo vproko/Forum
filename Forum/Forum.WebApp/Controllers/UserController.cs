@@ -1,190 +1,210 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using AutoMapper;
+using Forum.Dto.Models;
 using Forum.Services.Interfaces;
 using Forum.ViewModels.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Forum.WebApp.Controllers
 {
     [Authorize]
+    [Route("[controller]/[action]")]
     public class UserController : Controller
     {
         private readonly IUserService _userService;
-        private readonly IPostService _postService;
-        private readonly IHostingEnvironment _hosting;
-
-        public UserController(IUserService userService, IPostService postService, IHostingEnvironment hosting)
+        private readonly IMapper _mapper;
+        private readonly IWebHostEnvironment _enviroment;
+        public UserController(IUserService userService, IMapper mapper, IWebHostEnvironment enviroment)
         {
             _userService = userService;
-            _postService = postService;
-            _hosting = hosting;
+            _mapper = mapper;
+            _enviroment = enviroment;
         }
 
         [AllowAnonymous]
+        [HttpGet]
         public IActionResult Registration() => View();
 
         [AllowAnonymous]
         [HttpPost]
-        public async Task<IActionResult> RegistrationAsync(RegisterViewModel registration)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegistrationAsync(RegistrationViewModel registration)
         {
             if (ModelState.IsValid)
             {
-                await _userService.RegisterAsync(registration, "user");
-                return RedirectToAction("ShowAllCategoriesAsync", "Category");
-            }
+                if (registration.UserImage != null && registration.UserImage.Length < 2097152)
+                    registration.Avatar = await UploadFileAsync(registration.UserImage);
 
-            return RedirectToAction("registration", "user");
+                registration.Role = "user";
+                if (await _userService.CreateAsync(registration) is true)
+                    return RedirectToAction("ViewCategories", "Category");
+            }
+            ViewData["ErrorMessage"] = "Your registration was unsuccessful, try again";
+            return View();
         }
 
-        [Authorize(Roles = "admin")]
-        public IActionResult RegisterAdmin() => View();
-
-        [Authorize(Roles = "admin")]
-        [HttpPost]
-        public async Task<IActionResult> RegisterAdminAsync(RegisterViewModel registration)
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> FindUserAsync(Guid userId)
         {
-            if (ModelState.IsValid)
-            {
-                await _userService.RegisterAsync(registration, "admin");
-                return RedirectToAction("ShowAllCategoriesAsync", "Category");
-            }
-
-            return RedirectToAction("RegisterAdmin", "User");
+            UserDto user = await _userService.FindUserAsync(userId);
+            if (user is null)
+                return BadRequest(new { message = "Something went wrong." });
+            return Ok(user);
         }
 
         [AllowAnonymous]
-        public IActionResult LogIn() => View();
+        [HttpGet]
+        public IActionResult Login() => View();
 
         [AllowAnonymous]
         [HttpPost]
-        public async Task<IActionResult> LogInAsync(LoginViewModel model)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LoginAsync(LoginViewModel login)
+        {
+            if (ModelState.IsValid)
+                if (await _userService.LogInAsync(login))
+                    return RedirectToAction("ViewCategories", "Category");
+            ViewData["ErrorMessage"] = "Your login was unsuccessful, try again";
+            return View();
+        }
+
+        public async Task<IActionResult> LogoutAsync()
+        {
+            await _userService.LogOutAsync(User.Identity.Name);
+            return RedirectToAction("ViewCategories", "Category");
+        }
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> UpdateUserInfoAsync(UpdateInfoViewModel update)
         {
             if (ModelState.IsValid)
             {
-                bool result = await _userService.LoginAsync(model);
-
-                if (result)
+                if (update.UserImage != null)
                 {
-                    await _userService.UserOnlineStatusAsync(model.Username, true);
-                    return RedirectToAction("ShowAllCategoriesAsync", "Category");
+                    UserDto user = await _userService.FindUserAsync(User.Identity.Name);
+                    await DeleteFileAsync(user.Avatar);
+                    update.Avatar = await UploadFileAsync(update.UserImage);
                 }
+                UserDto result = await _userService.UpdateUserAsync(update, User.Identity.Name);
+                if (result != null)
+                    return Json(new { message = "Your info was updated successfully", user = result });
             }
 
-            return RedirectToAction("LogIn", "user");
+            return Json(new { message = "Update wasn't successful" });
         }
 
-        public async Task<IActionResult> LogOutAsync()
-        {
-            await _userService.UserOnlineStatusAsync(User.Identity.Name, false);
-            await _userService.LogoutAsync();
-
-            return RedirectToAction("ShowAllCategoriesAsync", "Category");
-        }
-
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> MembersAsync(int page = 0)
-        {
-            IEnumerable<UserViewModel> members = await _userService.GetAllUsersAsync();
-            IEnumerable<UserViewModel> users = members.Where(u => u.Administrator == false);
-            PaginationInfo(members, page);
-
-            return View(users.Skip(page * 5).Take(5));
-        }
-
-        public async Task<IActionResult> ProfileAsync(string tab, int page)
-        {
-            UserViewModel user = await _userService.GetCurrentUserAsync(User.Identity.Name);
-            ViewBag.Tab = tab;
-            ViewBag.Page = page;
-
-            return View(user);
-        }
-
+        [Authorize]
         [HttpPost]
-        public async Task<IActionResult> UploadPhotoAsync(IFormFile photo)
-        {
-            if (photo != null)
-            {
-                var path = Path.Combine(_hosting.WebRootPath, @"avatars", Path.GetFileName(photo.FileName));
-                photo.CopyTo(new FileStream(path, FileMode.Create));
-                string image = "/avatars/" + Path.GetFileName(photo.FileName);
-                var user = await _userService.GetCurrentUserAsync(User.Identity.Name);
-                user.Avatar = image;
-                await _userService.UpdateAvatarAsync(user);
-            }
-            return RedirectToAction("ProfileAsync");
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> UpdateUserAsync(UpdateUserViewModel update)
+        public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordViewModel password)
         {
             if (ModelState.IsValid)
-            {
-                if (update.NewPassword != null)
-                    await _userService.PasswordCheckAsync(update.OldPassword, update.UserID);
+                if (await _userService.ChangeUsersPasswordAsync(password, User.Identity.Name))
+                    return Json(new { message = "Your password was changed successfully" });
+            return Json(new { message = "Your password wasn't updated" });
+        }
 
-                await _userService.UpdateUserInfoAsync(update);
-
-                return RedirectToAction("ProfileAsync", new { tab = "#vtab2" });
-            }
-
-            return View("CustomErrorPage");
+        [Authorize]
+        public async Task<IActionResult> DeleteAccountAsync()
+        {
+            UserDto user = await _userService.FindUserAsync(User.Identity.Name);
+            if (user.Avatar != "not set")
+                await DeleteFileAsync(user.Avatar);
+            if (await _userService.RemoveAsync(User.Identity.Name))
+                return RedirectToAction("Registration");
+            return RedirectToAction("ViewCategories", "Category");
         }
 
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> DeleteUserAsync(string userId, string view, int totalUsers, int currentPage)
+        public async Task<IActionResult> DeleteAccountAdminAsync(string username)
         {
-            await _userService.DeleteUserAsync(userId);
-
-            if (view == "ReportedPostsAsync")
-                return RedirectToAction("ReportedPostsAsync", "Post");
-
-            int page = ReturnToPage(totalUsers, currentPage);
-
-            return RedirectToAction("MembersAsync", new { page });
-        }
-
-        public async Task<IActionResult> DeleteAccountAsync(string userId)
-        {
-            await _userService.DeleteUserAsync(userId);
-            await _userService.LogoutAsync();
-
-            return RedirectToAction("ShowAllCategoriesAsync", "Category");
+            UserDto user = await _userService.FindUserAsync(username);
+            if (user.Avatar != "not set")
+                await DeleteFileAsync(user.Avatar);
+            await _userService.RemovedByAdminAsync(username);
+            return RedirectToAction("UsersList");
         }
 
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> SuspendUnsuspendAsync(string username, string userId, int page)
+        [HttpGet]
+        public async Task<IActionResult> UsersListAsync(int pageIndex = 1, int pageSize = 5)
         {
-            await _userService.SuspensionStatusAsync(username);
+            PageInfoData(pageIndex, pageSize);
+            return View(_mapper.Map<IEnumerable<UserViewModel>>(await _userService.GetUsersPerPageAsync(pageIndex, pageSize)));
+        }
 
-            if(userId != null)
+        [Authorize(Roles = "admin")]
+        [HttpPost]
+        public async Task<IActionResult> SearchUsersListAsync(string searchTerm, int pageIndex = 1, int pageSize = 5)
+        {
+            PageInfoData(pageIndex, pageSize);
+            if (string.IsNullOrEmpty(searchTerm) is false)
             {
-                await _postService.DeleteReportedPostsByUserIdAsync(userId);
-                return RedirectToAction("ReportedPostsAsync", "Post");
+                ViewData["SearchTerm"] = searchTerm;
+                return View("Views/User/UsersList.cshtml", _mapper.Map<IEnumerable<UserViewModel>>(await _userService.SearchUsersPerPageAsync(searchTerm, pageIndex, pageSize)));
             }
-
-            return RedirectToAction("MembersAsync", new { page });
+            return RedirectToAction("UsersList", new { pageIndex, pageSize });
         }
 
-        private void PaginationInfo(IEnumerable<UserViewModel> users, int page)
+        [Authorize(Roles = "admin")]
+        [HttpGet]
+        public async Task<IActionResult> UsersListManagerAsync(string searchTerm, int pageIndex = 1, int pageSize = 5)
         {
-            ViewBag.Page = page;
-            ViewBag.TotalUSers = users.Count();
-            ViewBag.TotalPages = decimal.ToInt32(Math.Round(Math.Ceiling((decimal)users.Count() / 5), 0));
+            PageInfoData(pageIndex, pageSize);
+            if (string.IsNullOrEmpty(searchTerm))
+                return RedirectToAction("UsersList", new { pageIndex, pageSize });
+            ViewData["SearchTerm"] = searchTerm;
+            return View("Views/User/UsersList.cshtml", _mapper.Map<IEnumerable<UserViewModel>>(await _userService.SearchUsersPerPageAsync(searchTerm, pageIndex, pageSize)));
         }
 
-        private int ReturnToPage(int totalUsers, int currentPage)
+        [Authorize(Roles = "admin")]
+        [HttpGet]
+        public async Task<IActionResult> SuspendUserAsync(Guid userId, int pageIndex)
         {
-            int totalPages = decimal.ToInt32(Math.Round(Math.Ceiling(((decimal)totalUsers - 1) / 5), 0)) - 1;
-            int page = totalPages <= currentPage ? totalPages : currentPage;
+            await _userService.ChangeUsersSuspensionAsync(userId);
+            return RedirectToAction("UsersList", new { pageIndex });
+        }
 
-            return page;
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> CheckSenderAsync(Guid userId)
+        {
+            if (userId != Guid.Empty)
+                return Json(_mapper.Map<UserViewModel>(await _userService.FindUserAsync(userId)));
+            return Json(new { message = "Something went wrong." });
+        }
+
+        private async Task<string> UploadFileAsync(IFormFile file)
+        {
+            if (file != null)
+            {
+                var fileName = $"{Guid.NewGuid()}-{DateTime.UtcNow.Millisecond}{new FileInfo(file.FileName).Extension}";
+                var folderPath = Path.Combine(_enviroment.WebRootPath, @"uploads", fileName);
+                using var fileStream = new FileStream(folderPath, FileMode.Create, FileAccess.Write);
+                await file.CopyToAsync(fileStream);
+                return $"/uploads/{fileName}";
+            }
+            return "not set";
+        }
+
+        private Task DeleteFileAsync(string path)
+        {
+            if (System.IO.File.Exists(_enviroment.WebRootPath + $"/uploads/{Path.GetFileName(path)}"))
+                System.IO.File.Delete(_enviroment.WebRootPath + $"/uploads/{Path.GetFileName(path)}");
+            return Task.CompletedTask;
+        }
+
+        private void PageInfoData(int pageIndex, int pageSize)
+        {
+            ViewData["PageIndex"] = pageIndex;
+            ViewData["PageSize"] = pageSize;
         }
     }
 }

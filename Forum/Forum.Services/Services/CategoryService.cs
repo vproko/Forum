@@ -1,78 +1,45 @@
 ﻿using AutoMapper;
 using Forum.DataAccess.Interfaces;
 using Forum.DomainClasses.Models;
+using Forum.Dto.Models;
 using Forum.Services.Interfaces;
-using Forum.ViewModels.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Forum.Services
+namespace Forum.Services.Services
 {
-    public class CategoryService : ICategoryService
+    public class CategoryService : BaseService, ICategoryService
     {
-        private readonly IRepository<Category> _categoryRepository;
-        private readonly IMapper _mapper;
+        public CategoryService(IUnitOfWork unitOfWork, IMapper mapper) : base(unitOfWork, mapper) { }
 
-        public CategoryService(IRepository<Category> categoryRepository, IMapper mapper)
+        public async Task CreateAsync(CategoryDto category)
         {
-            _categoryRepository = categoryRepository;
-            _mapper = mapper;
+            _unitOfWork.Categories.Add(_mapper.Map<Category>(category));
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task<IEnumerable<CategoryViewModel>> GetAllCategoriesAsync()
+        public async Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync(int pageIndex, int pageSize)
         {
-            return await Task.Run(() => _mapper.Map<IEnumerable<CategoryViewModel>>(_categoryRepository.GetAll()));
+            return _mapper.Map<IEnumerable<CategoryDto>>(await _unitOfWork.Categories.GetCategoriesAsync(pageIndex, pageSize));
         }
 
-        public async Task<CategoryViewModel> GetCategoryByIdAsync(string categoryId)
+        public async Task<CategoryDto> GetCategoryByIdAsync(Guid categoryId, int pageIndex, int pageSize)
         {
-            Category category = await Task.Run(() => _mapper.Map<Category>(_categoryRepository.GetById(categoryId)));
-
-            if (category != null)
-                return _mapper.Map<CategoryViewModel>(category);
-            else
-                throw new Exception("There's no category with that id");
+            return _mapper.Map<CategoryDto>(await _unitOfWork.Categories.GetCategoryAsync(categoryId, pageIndex, pageSize));
         }
 
-        public async Task CreateCategoryAsync(CategoryViewModel category)
+        public async Task RemoveAsync(Guid id)
         {
-            await Task.Run(() => _categoryRepository.Insert(_mapper.Map<Category>(category)));
+            _unitOfWork.Categories.Remove(await _unitOfWork.Categories.FindAsync(id));
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task UpdateCategoryAsync(CategoryViewModel update)
+        public async Task UpdateAsync(CategoryDto category)
         {
-            Category category = await Task.Run(() => _mapper.Map<Category>(_categoryRepository.GetById(update.CategoryID)));
-
-            if (category != null)
-            {
-                category.CategoryID = update.CategoryID;
-                category.Title = update.Title;
-
-                int result = await Task.Run(() => _categoryRepository.Update(category));
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no category with that id");
-        }
-
-        public async Task DeleteCategoryAsync(string categoryId)
-        {
-            Category category = await Task.Run(() => _categoryRepository.GetById(categoryId));
-
-            if (category != null)
-            {
-                int result = _categoryRepository.Delete(categoryId);
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no category with that id");
-        }
-
-        private void CheckForError(int result)
-        {
-            if (result == -1)
-                throw new Exception("Something went wrong");
+            Category match = await _unitOfWork.Categories.FindAsync(category.CategoryId);
+            match.Name = category.Name ?? match.Name;
+            await _unitOfWork.CompleteAsync();
         }
     }
 }

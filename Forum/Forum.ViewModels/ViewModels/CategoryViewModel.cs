@@ -1,11 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Forum.ViewModels.ViewModels
 {
     public class CategoryViewModel
     {
-        public string CategoryID { get; set; }
-        public string Title { get; set; }
-        public virtual IEnumerable<ThreadViewModel> Threads { get; set; }
+        public Guid CategoryId { get; set; }
+        [Required]
+        public string Name { get; set; }
+        public int ThreadsCount { get; set; }
+
+        public IEnumerable<ThreadViewModel> Threads { get; set; }
     }
 }

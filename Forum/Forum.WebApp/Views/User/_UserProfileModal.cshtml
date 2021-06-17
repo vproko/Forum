@@ -1,0 +1,192 @@
+﻿@using Forum.ViewModels.ViewModels
+
+
+
+<div class="modal fade" id="UserProfileModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" id="profile-modal">
+            <div class="modal-header py-1">
+                <h5 class="modal-title" id="UserProfileLabel"><span id="user-name" style="color:coral;"></span> <span style="color:cadetblue;">Profile</span></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <i class="fas fa-times-circle" style="color:coral;"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- contnet -->
+
+                <div class="accordion" id="accordionExample">
+                    <div class="card" id="profile-card">
+                        <div class="card-header" id="headingOne">
+                            <h2 class="d-flex justify-content-between mb-0">
+                                <button class="btn text-center text-decoration-none" type="button" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                    User Profile
+                                </button>
+                                <a class="btn" id="delete-acct-btn" asp-action="DeleteAccount" asp-controller="User">
+                                    Delete Account <i class="fas fa-exclamation"></i>
+                                </a>
+                            </h2>
+                        </div>
+                        <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordionExample">
+                            <div class="card-body pt-2 pb-0" style="border: 3px solid cadetblue;">
+                                <div class="row pb-1" style="border-bottom: 1px solid cadetblue;">
+                                    <div class="col-2 px-2 pt-1">
+                                        <img id="user-image" src="" alt="User's image" style="width:53px;" />
+                                    </div>
+                                    <div class="col-10">
+                                        <div class="row">
+                                            <div class="col-3 px-0 text-left">
+                                                <p class="mb-0 font-weight-bolder" style="color:cadetblue;">Name:</p>
+                                                <p class="mb-0 font-weight-bolder" style="color:cadetblue;">Surname:</p>
+                                                <p class="mb-0 font-weight-bolder" style="color:cadetblue;">Username:</p>
+                                                <p class="mb-0 font-weight-bolder" style="color:cadetblue;">Email:</p>
+                                                <p class="mb-0 font-weight-bolder" style="color:cadetblue;">Joined:</p>
+                                            </div>
+                                            <div class="col-9 pl-0 text-right">
+                                                <p id="user-first-name" class="mb-0 font-weight-bolder" style="color:coral;"></p>
+                                                <p id="user-last-name" class="mb-0 font-weight-bolder" style="color:coral;"></p>
+                                                <p id="nickname" class="mb-0 font-weight-bolder" style="color:coral;"></p>
+                                                <p id="user-email" class="mb-0 font-weight-bolder" style="color:coral;"></p>
+                                                <p id="user-joined" class="mb-0 font-weight-bolder" style="color:coral;"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-4 text-center" style="font-size:35px;border-right: 1px solid cadetblue;" title="Posts">
+                                        <a id="user-profile-posts" class="text-decoration-none">
+                                            <i class="fas fa-comment font-weight-bolder" style="color:coral;"></i>
+                                            <span id="users-posts-count" class="font-weight-bolder" style="color:cadetblue;"></span>
+                                        </a>
+                                    </div>
+                                    <div class="col-4 text-center" style="font-size:35px;border-right: 1px solid cadetblue;" title="Replies">
+                                        <i class="fas fa-reply font-weight-bolder" style="color:coral;"></i>
+                                        <span id="users-replies-count" class="font-weight-bolder" style="color:cadetblue;"></span>
+                                    </div>
+                                    <div class="col-4 text-center" style="font-size:35px;" title="Messages">
+                                        <a class="text-decoration-none" asp-controller="Message" asp-action="ViewMessages">
+                                            <i class="fas fa-envelope font-weight-bolder" style="color:coral;"></i>
+                                            <span id="users-messages-count" class="font-weight-bolder" style="color:cadetblue;"></span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" id="edit-profile-card">
+                        <div class="card-header" id="headingTwo">
+                            <h2 class="mb-0">
+                                <button class="btn text-center collapsed text-decoration-none" type="button" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    Edit Profile
+                                </button>
+                            </h2>
+                        </div>
+                        <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionExample">
+                            <div class="card-body" style="border: 3px solid cadetblue;">
+                                <div class="accordion" id="accordionExampleTwo">
+                                    <div class="card">
+                                        <div class="card-header" id="headingThree">
+                                            <h2 class="mb-0">
+                                                <button class="btn text-center" type="button" data-toggle="collapse" data-target="#collapseThree" aria-expanded="true" aria-controls="collapseThree" style="width: 151px;">
+                                                    Change Info
+                                                </button>
+                                            </h2>
+                                        </div>
+                                        <div id="collapseThree" class="collapse" aria-labelledby="headingThree" data-parent="#accordionExampleTwo">
+                                            <div class="card-body">
+                                                @{
+                                                    UpdateInfoViewModel formModel = new UpdateInfoViewModel();
+
+                                                    <form class="pt-3" id="info-form" enctype="multipart/form-data" method="post">
+                                                        <input asp-for="@formModel.Avatar" value="" type="hidden" />
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label" asp-for="@formModel.FirstName"></label>
+                                                            <input class="form-control" asp-for="@formModel.FirstName" id="info-first-name" />
+                                                            <span asp-validation-for="@formModel.FirstName" class="text-danger"></span>
+                                                        </div>
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label" asp-for="@formModel.LastName"></label>
+                                                            <input class="form-control" asp-for="@formModel.LastName" id="info-last-name" />
+                                                            <span asp-validation-for="@formModel.LastName" class="text-danger"></span>
+                                                        </div>
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label" asp-for="@formModel.Email"></label>
+                                                            <input class="form-control" asp-for="@formModel.Email" id="info-email" />
+                                                            <span asp-validation-for="@formModel.Email" class="text-danger"></span>
+                                                        </div>
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label" asp-for="@formModel.UserImage"></label>
+                                                            <input class="form-control" asp-for="@formModel.UserImage" id="info-avatar" accept=".jpg, .jpeg, .bmp, .gif, .pwg" />
+                                                            <span asp-validation-for="@formModel.UserImage" class="text-danger"></span>
+                                                        </div>
+                                                        <br />
+                                                        <div class="text-center">
+                                                            <button class="btn register-btn reset" data-dismiss="modal">Close</button>
+                                                            &nbsp;
+                                                            <button class="btn register-btn submit" id="change-profile-btn">Change</button>
+                                                            <p class="mt-3 error-msg" id="change-info-msg"></p>
+                                                            <div class="pt-3">
+                                                                <div class="spinner-grow" style="display:none;" role="status" id="profile-spinner">
+                                                                    <span class="visually-hidden"></span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </form>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card">
+                                        <div class="card-header" id="headingFour">
+                                            <h2 class="mb-0">
+                                                <button class="btn text-center collapsed" type="button" data-toggle="collapse" data-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour" style="width: 151px;">
+                                                    Change Password
+                                                </button>
+                                            </h2>
+                                        </div>
+                                        <div id="collapseFour" class="collapse" aria-labelledby="headingFour" data-parent="#accordionExampleTwo">
+                                            <div class="card-body">
+                                                @{
+                                                    ChangePasswordViewModel formModelTwo = new ChangePasswordViewModel();
+
+                                                    <form class="pt-3" id="password-form" method="post">
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label" asp-for="@formModelTwo.OldPassword"></label>
+                                                            <input class="form-control" type="password" asp-for="@formModelTwo.OldPassword" id="old-password" />
+                                                            <span asp-validation-for="@formModelTwo.OldPassword" class="text-danger"></span>
+                                                        </div>
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label" asp-for="@formModelTwo.NewPassword"></label>
+                                                            <input class="form-control" type="password" asp-for="@formModelTwo.NewPassword" id="new-password" />
+                                                            <span asp-validation-for="@formModelTwo.NewPassword" class="text-danger"></span>
+                                                        </div>
+                                                        <div class="form-group mb-0">
+                                                            <label class="form-label" asp-for="@formModelTwo.ConfrimNewPassword"></label>
+                                                            <input class="form-control" type="password" asp-for="@formModelTwo.ConfrimNewPassword" id="confirm-new-password" />
+                                                            <span asp-validation-for="@formModelTwo.ConfrimNewPassword" class="text-danger"></span>
+                                                        </div>
+                                                        <br />
+                                                        <div class="text-center">
+                                                            <button class="btn register-btn reset" data-dismiss="modal">Close</button>
+                                                            &nbsp;
+                                                            <button class="btn register-btn submit" id="change-password-btn">Change</button>
+                                                            <p class="mt-3 error-msg" id="change-pass-msg"></p>
+                                                            <div class="pt-3">
+                                                                <div class="spinner-grow" style="display:none;" role="status" id="password-spinner">
+                                                                    <span class="visually-hidden"></span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </form>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

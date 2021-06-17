@@ -1,0 +1,91 @@
+﻿@using Forum.ViewModels.ViewModels
+@model IEnumerable<CategoryViewModel>
+
+@{
+    ViewData["Title"] = "Categories";
+}
+
+<div class="container-fluid categories">
+    @foreach (CategoryViewModel category in Model)
+    {
+        <table class="table mt-5">
+            <caption class="py-0 mb-2">
+                <a asp-action="ViewCategory" asp-controller="Category" asp-route-categoryId="@category.CategoryId">@category.Name</a>
+            </caption>
+            <thead>
+                <tr>
+                    <th class="font-weight-normal">
+                        Threads
+                    </th>
+                    <th class="font-weight-normal text-center">
+                        Posts
+                    </th>
+                    <th class="font-weight-normal text-right">
+                        Date
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (category.Threads.Count() > 0)
+                {
+                    foreach (ThreadViewModel thread in category.Threads)
+                    {
+                        <tr>
+                            <td class="text-left thread-title pr-0">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <a class="topics  text-muted" asp-action="ViewThread" asp-controller="Thread" asp-route-threadId="@thread.ThreadId">
+                                            @thread.Title
+                                        </a>
+                                    </div>
+                                    <div class="topics-symbols">
+                                        @if (thread.Sticky is true)
+                                        {
+                                            <i class="fas fa-map-pin" title="Sticked"></i>
+                                        }
+                                        @if (thread.Locked is true)
+                                        {
+                                            <i class="fas fa-lock" title="Locked"></i>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center date-info-text thread-count" style="color:#696969;">
+                                @thread.PostsCount
+                            </td>
+                            <td class="text-right date-info-text thread-date" style="color:#696969;">
+                                @thread.DateCreated.ToString("dd MMMM, yyyy")
+                            </td>
+                        </tr>
+                    }
+                }
+                @if (category.Threads.Count() == 0)
+                {
+                    <tr>
+                        <td class="text-center font-weight-bolder empty-category" colspan="3">
+                            There're no threads
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    @if (User.Identity.IsAuthenticated is true && User.IsInRole("admin") is true)
+    {
+        <div class="container-fluid w-75 mt-5">
+            @{
+                var formModel = new CategoryViewModel();
+                <form asp-controller="Category" asp-action="CreateCategory" method="post">
+                    <div class="form-group mb-0">
+                        <input class="form-control" type="text" name="Name" placeholder="Add category..." />
+                    </div>
+                    <div class="pt-4 text-center">
+                        <button class="btn register-btn reset" type="reset">Clear</button>
+                        &nbsp;
+                        <button class="btn register-btn submit" type="submit">Create</button>
+                    </div>
+                </form>
+            }
+        </div>
+    }
+</div>

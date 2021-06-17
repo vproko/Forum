@@ -1,80 +1,45 @@
 ﻿using AutoMapper;
 using Forum.DataAccess.Interfaces;
 using Forum.DomainClasses.Models;
+using Forum.Dto.Models;
 using Forum.Services.Interfaces;
-using Forum.ViewModels.ViewModels;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
-namespace Forum.Services
+namespace Forum.Services.Services
 {
-    public class MessageService : IMessageService
+    public class MessageService : BaseService, IMessageService
     {
-        private readonly IRepository<Message> _messageRepository;
-        private readonly IMapper _mapper;
-
-        public MessageService(IRepository<Message> messageRepository, IMapper mapper)
+        private readonly UserManager<User> _userManager;
+        public MessageService(IUnitOfWork unitOfWork, IMapper mapper, UserManager<User> userManager) : base(unitOfWork, mapper)
         {
-            _messageRepository = messageRepository;
-            _mapper = mapper;
+            _userManager = userManager;
         }
 
-        public async Task<IEnumerable<MessageViewModel>> GetAllMessagesAsync()
+        public async Task<IEnumerable<MessageDto>> GetUsersMessagesPerPageAsync(string username, int pageIndex, int pageSize)
         {
-            return await Task.Run(() => _mapper.Map<IEnumerable<MessageViewModel>>(_messageRepository.GetAll()));
+            User user = await _userManager.FindByNameAsync(username);
+            return _mapper.Map<IEnumerable<MessageDto>>(await _unitOfWork.Messages.GetMessagesAsync(user.Id, pageIndex, pageSize));
         }
 
-        public async Task<IEnumerable<MessageViewModel>> GetMessagesByUsernameAsync(string username)
+        public async Task<int> GetMessagesCountAsync(string username)
         {
-            try
-            {
-                IEnumerable<Message> messages = await Task.Run(() => _messageRepository.GetAll());
-                var usersMessages = messages.Where(m => m.ReceiverUsername == username);
-                return _mapper.Map<IEnumerable<MessageViewModel>>(usersMessages);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            User user = await _userManager.FindByNameAsync(username);
+            return await _unitOfWork.Messages.GetMessagesCountAsync(user.Id);
         }
 
-        public async Task CreateMessageAsync(MessageViewModel message)
+        public async Task CreateAsync(MessageDto message)
         {
-            int result = await Task.Run(() => _messageRepository.Insert(_mapper.Map<Message>(message)));
-
-            CheckForError(result);
+            _unitOfWork.Messages.Add(_mapper.Map<Message>(message));
+            await _unitOfWork.CompleteAsync();
         }
 
-        public async Task DeleteMessageAsync(string messageId)
+        public async Task RemoveAsync(Guid id)
         {
-            Message message = await Task.Run(() => _messageRepository.GetById(messageId));
-
-            if (message != null)
-            {
-                int result = await Task.Run(() => _messageRepository.Delete(messageId));
-                CheckForError(result);
-            }
-            else
-                throw new Exception("There's no message with that id");
-        }
-
-        public async Task DeleteAllUsersMessagesAsync(string userId)
-        {
-            IEnumerable<Message> messages = await Task.Run(() => _messageRepository.GetAll());
-
-            foreach (Message message in messages)
-            {
-                if (message.ReceiverID == userId)
-                    await Task.Run(() => _messageRepository.Delete(message.MessageID));
-            }
-        }
-
-        private void CheckForError(int result)
-        {
-            if (result == -1)
-                throw new Exception("Something went wrong");
+            _unitOfWork.Messages.Remove(await _unitOfWork.Messages.FindAsync(id));
+            await _unitOfWork.CompleteAsync();
         }
     }
 }

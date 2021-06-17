@@ -1,0 +1,34 @@
+﻿@using Forum.ViewModels.ViewModels
+@model ReplyViewModel
+
+@{
+    ViewData["Title"] = "Reply";
+    Guid threadId = (Guid)ViewData["ThreadID"];
+    int pageIndex = (int)ViewData["PageIndex"];
+    int pageSize = (int)ViewData["PageSize"];
+}
+
+<div class="modal fade" id="@("reply-" + Model.PostId)" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Reply:</h5>
+            </div>
+            <div class="modal-body text-left">
+                <form asp-controller="Reply" asp-action="CreateReply" asp-route-threadId="@threadId" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize" method="post">
+                    <div class="form-group mb-0">
+                        <input type="hidden" name="PostId" value="@Model.PostId" />
+                        <input type="hidden" asp-for="UserId" value="@Model.UserId" />
+                        <input type="hidden" asp-for="Username" value="@Model.Username" />
+                        <textarea class="form-control font-weight-bold" name="Content" rows="3"></textarea>
+                    </div>
+                    <div class="pt-3 text-center">
+                        <button class="btn register-btn reset" data-dismiss="modal">Close</button>
+                        &nbsp;
+                        <button class="btn register-btn submit" type="submit">Reply</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

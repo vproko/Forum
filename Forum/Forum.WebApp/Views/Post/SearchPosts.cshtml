@@ -1,0 +1,425 @@
+﻿@using Forum.ViewModels.ViewModels
+@model IEnumerable<PostViewModel>
+
+@{
+    ViewData["Title"] = "Search results";
+    UserViewModel user = (UserViewModel)ViewData["User"];
+    string term = (string)ViewData["SearchTerm"];
+    int pageIndex = (int)ViewData["PageIndex"];
+    int pageSize = (int)ViewData["PageSize"];
+}
+
+<div class="container-fluid thread pt-1">
+    <div class="w-100 d-flex justify-content-between mb-4">
+        <div>
+            <a class="home-btn d-inline-block text-center py-1" asp-action="ViewCategories" asp-controller="Category" title="Main Page">
+                <i class="fas fa-home"></i>
+            </a>
+        </div>
+        <div class="dropdown">
+            <button class="px-2 pt-0 pb-1 btn dropdown-toggle" type="button" id="dropdownPageSize" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                @pageSize
+            </button>
+            <div class="dropdown-menu" aria-labelledby="dropdownPageSize" style="min-width:100%!important;">
+                <a class="dropdown-item text-center" asp-action="RedirectToSearchPosts" asp-route-term="@term" asp-controller="Post" asp-route-pageIndex="1" asp-route-pageSize="5">5</a>
+                <a class="dropdown-item text-center" asp-action="RedirectToSearchPosts" asp-route-term="@term" asp-controller="Post" asp-route-pageIndex="1" asp-route-pageSize="7">7</a>
+                <a class="dropdown-item text-center" asp-action="RedirectToSearchPosts" asp-route-term="@term" asp-controller="Post" asp-route-pageIndex="1" asp-route-pageSize="10">10</a>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            @if (Model.Count() > 0)
+            {
+                <ul class="w-100 mb-0">
+                    @foreach (PostViewModel post in Model)
+                    {
+                        ViewData["ThreadID"] = post.ThreadId;
+                        <li>
+                            <div class="post font-weight-bolder">
+                                <div class="row">
+                                    <div class="post-info pl-3">
+                                        <div>
+                                            <img src="~/uploads/no-image.jpg" class="image" alt="No image" />
+                                        </div>
+                                        <div>
+                                            <ul>
+                                                <li class="font-weight-bolder position-relative" style="color:coral;">
+                                                    @if (user != null && post.Username != user.UserName && user.Suspended is false)
+                                                    {
+                                                        <i data-toggle="modal" data-target='@("#message-" + post.UserId)' class="far fa-envelope p-0 user-icons" title="Send PM"></i>
+                                                    }
+                                                    <div class="d-inline-block username">
+                                                        <a asp-action="FindUsersPosts" asp-controller="Post" asp-route-userId="@post.UserId" asp-route-username="@post.User.UserName" style="color:coral;">@post.User.UserName</a>
+                                                    </div>
+                                                </li>
+                                                @if (user != null && post.Username != user.UserName && user.Suspended is false)
+                                                {
+                                                    ViewData["Receiver"] = post.User.UserName;
+                                                    ViewData["Term"] = term;
+                                                    <partial name="~/Views/Message/_CreateMessageSearchPostsModal.cshtml" model="new MessageViewModel { SenderId = user.UserId, ReceiverId = post.UserId, SenderUsername = user.UserName }" />
+                                                }
+                                                <li>
+                                                    <i class="far fa-user p-0 user-icons" title="Joined"></i> <span style="color:cadetblue;">@post.User.Joined.ToString("dd/MMM/yyyy")</span>
+                                                </li>
+                                                <li>
+                                                    <i class="far fa-comments p-0 user-icons" title="Posts"></i> <span style="color:cadetblue;">@(post.User.PostsCount + post.User.RepliesCount)</span>
+                                                </li>
+                                                @if (post.User.Suspended is true)
+                                                {
+                                                    <li class="font-weight-bolder" style="color:#ff5151">
+                                                        <i class="fas fa-flag" title="Suspended"></i>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="post-content pr-3">
+                                        <div class="post-body">
+                                            <p class="mb-0 date-info">
+                                                @if (post.Edited is true)
+                                                {
+                                                    <span class="date-info-text">Edited by <span class="font-weight-bolder" style="color:coral;">@post.EditedBy</span> on</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="date-info-text">Posted on</span>
+                                                }
+                                                <span class="font-weight-bolder" style="color:cadetblue;">@post.DatePosted.ToString("dd/MM/yyyy")</span> <span class="date-info-text">at</span> <span class="font-weight-bolder" style="color:cadetblue;">@post.DatePosted.ToLocalTime().ToString("HH:mm")</span>:
+                                            </p>
+                                            <p class="mb-0 mt-3 pl-3 post-text">
+                                                <b>@post.Content</b>
+                                            </p>
+                                            @if (post.Replies.Count() != 0)
+                                            {
+                                                <div class="replies-main">
+                                                    <p class="mb-0 pt-2">
+                                                        <span style="color:cadetblue;">Replies</span>:
+                                                    </p>
+                                                    @foreach (ReplyViewModel reply in post.Replies)
+                                                    {
+                                                        <div class="replies position-relative">
+                                                            <div class="tooltip-reply-user">
+                                                                <div class="d-flex justify-content-start">
+                                                                    <div>
+                                                                        <img src="/uploads/no-image.jpg" class="image d-block" alt="users image" style="width:53px;">
+                                                                    </div>
+                                                                    <div class="w-75 mx-1 my-auto">
+                                                                        <a class="text-left" style="color:coral;" asp-action="FindUsersPosts" asp-controller="Post" asp-route-userId="@reply.UserId" asp-route-username="@reply.Username">@reply.Username</a>
+                                                                        <div class="d-flex justify-content-between">
+                                                                            <div class="text-left">
+                                                                                <div style="color:cadetblue;">Joined:</div>
+                                                                                <div style="color:cadetblue;">Posts: </div>
+                                                                                <div style="color:cadetblue;">Replies:</div>
+                                                                            </div>
+                                                                            <div class="text-right reply-user-info">
+                                                                                <div>@reply.User.Joined.ToString("dd MMM, yyyy")</div>
+                                                                                <div>@reply.User.PostsCount</div>
+                                                                                <div>@reply.User.RepliesCount</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <p class="mb-0 pb-2 font-weight-bold date-info">
+                                                                @if (reply.Edited is true)
+                                                                {
+                                                                    if (reply.Username != reply.EditedBy)
+                                                                    {
+                                                                        <span class="date-info-text">Originally posted by <span class="reply-username" style="color:cadetblue;font-weight:bolder;">@reply.Username</span>, edited by <span class="font-weight-bolder" style="color:coral;">@reply.EditedBy</span> on</span>
+                                                                    }
+                                                                    if (reply.Username == reply.EditedBy)
+                                                                    {
+                                                                        <span class="date-info-text">Edited by <span class="font-weight-bolder reply-username" style="color:coral;">@reply.EditedBy</span> on</span>
+                                                                    }
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="date-info-text">Replied by <span class="reply-username" style="color:coral;font-weight:bolder;">@reply.Username</span> on</span>
+                                                                }
+                                                                <span style="color:cadetblue;">@reply.DateReplied.ToString("dd/MM/yyyy")</span> <span class="date-info-text">at</span> <span style="color:cadetblue;">@reply.DateReplied.ToLocalTime().ToString("HH:mm")</span>:
+                                                            </p>
+                                                            <p class="pb-0 reply">
+                                                                @reply.Content
+                                                            </p>
+                                                            <div class="d-flex justify-content-end" id="reply-btns">
+                                                                @if (user != null && reply.Username != user.UserName && user.Suspended is false)
+                                                                {
+                                                                    ViewData["Receiver"] = reply.User.UserName;
+                                                                    ViewData["Term"] = term;
+                                                                    <a class="mx-1" title="Send PM" data-toggle="modal" data-target='@("#message-" + reply.UserId)'>
+                                                                        <i class="fas fa-envelope p-0 user-icons" title="Send PM"></i>
+                                                                    </a>
+                                                                    <partial name="~/Views/Message/_CreateMessageSearchPostsModal.cshtml" model="new MessageViewModel { SenderId = user.UserId, ReceiverId = reply.UserId, SenderUsername = user.UserName }" />
+                                                                }
+                                                                @if ((User.Identity.Name == reply.Username && reply.EditedBy != "Admin") || User.IsInRole("admin") is true)
+                                                                {
+                                                                    ViewData["Term"] = term;
+                                                                    ViewData["PageIndex"] = pageIndex;
+                                                                    ViewData["PageSize"] = pageSize;
+                                                                    <a class="mx-1" title="Edit" data-toggle="modal" data-target='@("#edit-reply-" + reply.ReplyId)'>
+                                                                        <i class="fas fa-pen"></i>
+                                                                    </a>
+                                                                    <partial name="~/Views/Reply/_EditReplySearchPostsModal.cshtml" model="reply" />
+                                                                }
+                                                                @if ((User.Identity.Name == reply.Username) || User.IsInRole("admin") is true)
+                                                                {
+                                                                    <a class="mx-1" title="Delete" asp-action="DeleteReply" asp-controller="Reply" asp-route-replyId="@reply.ReplyId" asp-route-term="@term" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </a>
+                                                                }
+                                                                @if (User.Identity.IsAuthenticated is true && User.Identity.Name != reply.Username && User.IsInRole("admin") is false && reply.EditedBy != "Admin" && reply.Reported is false)
+                                                                {
+                                                                    <a class="mx-1" title="Report" asp-action="ReportReply" asp-controller="Reply" asp-route-replyId="@reply.ReplyId" asp-route-term="@term" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize">
+                                                                        <i class="fas fa-flag"></i>
+                                                                    </a>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-start my-2">
+                                    <div id="category">
+                                        <a class="d-inline-block thread-btn py-1 px-3 text-decoration-none font-weight-bolder" title="Check Thread" asp-action="ViewThread" asp-controller="Thread" asp-route-threadId="@post.ThreadId">
+                                            @(post.Thread.Title.Length < 40 ? post.Thread.Title : $"{post.Thread.Title.Substring(0, 37)}...")
+                                        </a>
+                                    </div>
+                                </div>
+                                @if (User.Identity.IsAuthenticated is true)
+                                {
+                                    <div class="d-flex justify-content-end mt-2">
+                                        @if (User.IsInRole("admin") is true)
+                                        {
+                                            <a class="report-btn mr-1 jax-btn" title="Move To">
+                                                <i id="@post.PostId" class="fas fa-truck-moving"></i>
+                                            </a>
+                                        }
+                                        @if (user.Suspended is false)
+                                        {
+                                            ViewData["Term"] = term;
+                                            ViewData["PageIndex"] = pageIndex;
+                                            ViewData["PageSize"] = pageSize;
+                                            <a class="reply-btn mr-1" title="Reply" data-toggle="modal" data-target='@("#reply-" + post.PostId)'>
+                                                <i class="fas fa-reply"></i>
+                                            </a>
+                                            <partial name="~/Views/Reply/_CreateReplySearchPostsModal.cshtml" model="new ReplyViewModel { PostId = post.PostId, UserId = user.UserId, Username = user.UserName }" />
+
+                                            if (User.IsInRole("admin") is false && post.Reported is false && post.User.UserName != User.Identity.Name)
+                                            {
+                                                <a class="report-btn mr-1" title="Report" asp-action="ReportPost" asp-controller="Post" asp-route-postId="@post.PostId" asp-route-term="@term" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize">
+                                                    <i class="fas fa-flag"></i>
+                                                </a>
+                                            }
+                                        }
+                                        @if ((User.Identity.Name == post.User.UserName && post.EditedBy != "Admin") || User.IsInRole("admin") is true)
+                                        {
+                                            ViewData["Term"] = term;
+                                            ViewData["pageIndex"] = pageIndex;
+                                            ViewData["PageSize"] = pageSize;
+                                            <a class="edit-btn mr-1" title="Edit" data-toggle="modal" data-target='@("#edit-" + post.PostId)'>
+                                                <i class="fas fa-pen"></i>
+                                            </a>
+                                            <partial name="~/Views/Post/_EditPostSearchPostsModal.cshtml" model="post" />
+                                        }
+                                        @if ((User.Identity.Name == post.User.UserName) || User.IsInRole("admin") is true)
+                                        {
+                                            <a class="delete-btn mr-1" title="Delete" asp-action="DeletePost" asp-controller="Post" asp-route-postId="@post.PostId" asp-route-pageIndex="@(Model.Count() > 1 ? pageIndex : (pageIndex == 1) ? 1 : (pageIndex - 1))" asp-route-pageSize="@pageSize">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <br />
+                        </li>
+                    }
+                </ul>
+
+                <div class="mt-1 mb-4 text-center">
+                    @if (pageIndex == 1 && Model.Count() == pageSize)
+                    {
+                        <a class="page-index-recent mx-1" asp-action="RedirectToSearchPosts" asp-controller="Post" asp-route-term="@term" asp-route-pageIndex="@(pageIndex + 1)" asp-route-pageSize="@pageSize">Next</a>
+                    }
+                    @if (pageIndex > 1 && Model.Count() == pageSize)
+                    {
+                        <a class="page-index-recent mx-1" asp-action="RedirectToSearchPosts" asp-controller="Post" asp-route-term="@term" asp-route-pageIndex="@(pageIndex - 1)" asp-route-pageSize="@pageSize">Prev</a>
+                        <a class="page-index-recent mx-1" asp-action="RedirectToSearchPosts" asp-controller="Post" asp-route-term="@term" asp-route-pageIndex="@(pageIndex + 1)" asp-route-pageSize="@pageSize">Next</a>
+                    }
+                    @if (pageIndex > 1 && Model.Count() < pageSize)
+                    {
+                        <a class="page-index-recent mx-1" asp-action="RedirectToSearchPosts" asp-controller="Post" asp-route-term="@term" asp-route-pageIndex="@(pageIndex - 1)" asp-route-pageSize="@pageSize">Prev</a>
+                    }
+                </div>
+                if (Model.Count() == pageSize)
+                {
+                    <div class="d-flex justify-content-center mt-1">
+                        <form class="form-inline" asp-action="SearchPosts" asp-controller="Post" method="post">
+                            <div class="form-group">
+                                <input type="hidden" name="term" value="@term" />
+                                <input type="hidden" name="pageSize" value="@pageSize" />
+                                <label id="go-to-label">Page:</label>
+                                <input type="text" id="go-to-page" class="form-control mx-sm-3" name="pageIndex" placeholder="@pageIndex">
+                                <button type="submit" id="go-to-btn">Go</button>
+                            </div>
+                        </form>
+                    </div>
+                }
+            }
+            else
+            {
+                if (pageIndex == 1)
+                {
+                    <h1 class="text-center">There're no matches</h1>
+                }
+                else if (pageIndex > 1)
+                {
+                    <h1 class="text-center">No more posts</h1>
+                    <div class="mt-1 mt-5 text-center">
+                        <a class="btn-lg page-index-recent mx-1" onClick="history.go(-1);">
+                            Back
+                        </a>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Change thread modal -->
+
+    <div class="modal fade" id="myModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header justify-content-center">
+                    <h5 class="modal-title mt-4" id="exampleModalLabel"></h5>
+                </div>
+                <div class="modal-body text-center pt-0" id="modal-main">
+                    <form>
+                        <div class="form-group">
+                            <input type="hidden" id="postId">
+                            <label for="SearchInput" id="search-label">Search Threads</label>
+                            <input type="text" class="form-control mt-3" id="SearchInput">
+                        </div>
+                    </form>
+                    <div id="search-results"></div>
+                </div>
+                <div class="py-3 text-center" id="move-to-btns">
+                    <button type="button" class="btn register-btn reset" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn register-btn submit" id="search-threads-btn">Search</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+
+        const createSearchThreads = (data, postId) => {
+            $("#search-results").empty();
+            let select = $("<select>").attr({ name: "threads", id: "thread-list" }).appendTo("#myModal #search-results");
+            for (const el in data) {
+                select.append($("<option>").attr("value", `${data[el].threadId}`).text(`${data[el].title}`).on("click", function (e) {
+                    movePost(postId, e.target.value);
+                }));
+            }
+            $('#myModal').modal('show');
+        };
+
+        if ($(".jax-btn") !== []) {
+            for (const btn of $(".jax-btn")) {
+                btn.addEventListener("click", function (e) {
+                    $("#postId").val(e.target.id);
+                    $('#myModal').modal('show');
+                })
+            }
+        }
+
+        $("#myModal").on("hidden.bs.modal", function () {
+            $("#search-results").empty();
+            $("#SearchInput").val("");
+            $('#myModal').modal('hide');
+        })
+
+        $("#myModal input").keypress(function (e) {
+            if (e.keyCode === 13) {
+                e.preventDefault()
+                $("#search-threads-btn").trigger("click");
+            }
+        })
+
+        if ($("#search-threads-btn") !== null) {
+            $("#search-threads-btn").on("click", function () {
+                const searchTerm = $("#SearchInput").val();
+                let postId;
+                if ($("#postId") !== null) {
+                    postId = $("#postId").val();
+                }
+                getThreads(searchTerm, postId);
+            })
+        }
+
+        const getThreads = (term, postId) => {
+            const url = '@Url.Action("SearchThreads", "Thread")';
+            $.ajax({
+                url: url + `?term=${term}`,
+                type: 'POST',
+                contentType: "application/json",
+                success: function (data) {
+                    if (data.hasOwnProperty("error") !== true) {
+                        $(".modal-title").text("");
+                        createSearchThreads(data, postId);
+                    } else {
+                        $(".modal-title").text(data.error);
+                        $("#search-results").empty();
+                    }
+                },
+                error: function (data) {
+                    $(".modal-title").text(data.error);
+                }
+            })
+        }
+
+        const movePost = (postId, threadId) => {
+            const url = `@Url.Action("ChangePostsThread", "Post")`;
+            $.ajax({
+                url: url + `?postId=${postId}&threadId=${threadId}`,
+                type: 'POST',
+                contentType: "application/json",
+                success: function (data) {
+                    $("#modal-main").empty();
+                    $(".modal-title").text(data.response);
+                    $("#search-threads-btn").addClass("d-none");
+                    $("#myModal").on("hidden.bs.modal", function () {
+                        $('#myModal').modal('hide');
+                        location.reload(true);
+                    })
+                },
+                error: function (error) {
+                    $(".modal-title").text(error.response);
+                }
+            })
+        }
+
+        $(document).on("click", function () {
+            $('.tooltip-reply-user[style*="display: block"]').hide();
+        })
+
+        if ($(".reply-username") !== null) {
+            $(".reply-username").each(function () {
+                $(this).on("mouseenter", function () {
+                    $('.tooltip-reply-user[style*="display: block"]').hide();
+                    $(this).closest("p").closest("div").find(".tooltip-reply-user").show();
+                })
+            })
+        }
+
+    </script>
+}

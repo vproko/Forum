@@ -1,0 +1,34 @@
+﻿@using Forum.ViewModels.ViewModels
+@model MessageViewModel
+
+@{
+    ViewData["Title"] = "Message";
+    string receiver = (string)ViewData["Receiver"];
+    int pageIndex = (int)ViewData["PageIndex"];
+    int pageSize = (int)ViewData["PageSize"];
+}
+
+<div class="modal fade" id="@("message-" + Model.ReceiverId)" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Message to <span style="color:coral;">@receiver</span></h5>
+            </div>
+            <div class="modal-body text-left">
+                <form asp-controller="Message" asp-action="CreateMessage" asp-route-pageIndex="@pageIndex" asp-route-pageSize="@pageSize" method="post">
+                    <div class="form-group mb-0">
+                        <input type="hidden" asp-for="ReceiverId" value="@Model.ReceiverId" />
+                        <input type="hidden" asp-for="SenderId" value="@Model.SenderId" />
+                        <input type="hidden" asp-for="SenderUsername" value="@Model.SenderUsername" />
+                        <textarea class="form-control font-weight-bold" name="Content" rows="3"></textarea>
+                    </div>
+                    <div class="pt-3 text-center">
+                        <button class="btn register-btn reset" data-dismiss="modal">Close</button>
+                        &nbsp;
+                        <button class="btn register-btn submit" type="submit">Send</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
